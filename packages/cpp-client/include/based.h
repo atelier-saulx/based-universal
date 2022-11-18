@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <string>
 
-using based_id = int32_t;
+typedef int32_t based_id;
 // using based_observe_cb = void (*)(char*, uint64_t, char*);
 // using based_cb = void (*)(char*, char*);
 
