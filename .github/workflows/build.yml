@@ -1,0 +1,8 @@
+name: build-script
+on: [workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - run: bash packages/cpp-client/build.sh
