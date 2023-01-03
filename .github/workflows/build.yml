@@ -5,4 +5,4 @@ jobs:
   build:
     runs-on: macos-latest
     steps:
-      - run: bash packages/cpp-client/build.sh
+      - run: ls
