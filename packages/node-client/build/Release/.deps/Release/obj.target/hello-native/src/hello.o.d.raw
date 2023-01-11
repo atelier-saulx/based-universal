@@ -1,0 +1,9 @@
+Release/obj.target/hello-native/src/hello.o: ../src/hello.cc \
+  /Users/francesco/saulx/based-universal/packages/node-client/hello/based.h \
+  /Users/francesco/saulx/based-universal/packages/node-client/hello/node_modules/node-addon-api/napi.h \
+  /Users/francesco/Library/Caches/node-gyp/16.14.2/include/node/node_api.h \
+  /Users/francesco/Library/Caches/node-gyp/16.14.2/include/node/js_native_api.h \
+  /Users/francesco/Library/Caches/node-gyp/16.14.2/include/node/js_native_api_types.h \
+  /Users/francesco/Library/Caches/node-gyp/16.14.2/include/node/node_api_types.h \
+  /Users/francesco/saulx/based-universal/packages/node-client/hello/node_modules/node-addon-api/napi-inl.h \
+  /Users/francesco/saulx/based-universal/packages/node-client/hello/node_modules/node-addon-api/napi-inl.deprecated.h
