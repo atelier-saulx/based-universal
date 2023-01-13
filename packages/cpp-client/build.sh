@@ -15,4 +15,4 @@ done
 shopt -u nullglob
 
 
-xcodebuild -create-xcframework -library build-scripts/build_catalyst/Release/libbased.dylib -headers include -library build-scripts/build_darwin/Release/libbased.dylib -headers include -library build-scripts/build_ios/Release-iphoneos/libbased.dylib -headers include -library build-scripts/build_ios_sim/Release-iphonesimulator/libbased.dylib -headers include  -output Based.xcframework
+xcodebuild -create-xcframework -library build-scripts/build_catalyst/Release/libbased.1.0.0.dylib -headers include -library build-scripts/build_darwin/Release/libbased.1.0.0.dylib -headers include -library build-scripts/build_ios/Release-iphoneos/libbased.1.0.0.dylib -headers include -library build-scripts/build_ios_sim/Release-iphonesimulator/libbased.1.0.0.dylib -headers include  -output Based.xcframework
