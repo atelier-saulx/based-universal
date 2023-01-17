@@ -36,22 +36,28 @@ int main(int argc, char** argv) {
 
     int client1 = Based__new_client();
 
-    Based__connect_to_url(client1, (char*)"wss://localhost:9910");
-    // Based__connect(client1, "http://localhost:7022/", "saulx", "demo", "production",
-    // "@based/edge",
-    //                "", false);
-    Based__auth(client1, "derp", NULL);
+    // Based__connect_to_url(client1, (char*)"wss://localhost:9910");
+    Based__connect(client1, (char*)"https://d15p61sp2f2oaj.cloudfront.net", (char*)"airhub",
+                   (char*)"airhub", (char*)"edge", (char*)"@based/edge", (char*)"", false);
+
+    // std::string res = Based__get_service(client1, (char*)"https://d15p61sp2f2oaj.cloudfront.net",
+    //                                      (char*)"saulx", (char*)"demo", (char*)"production",
+    //                                      (char*)"@based/edge", (char*)"", true);
+
+    // Based__auth(client1, "derp", NULL);
     bool done = false;
     // int i = 0;
     std::string cmd;
 
     std::list<int> obs;
 
-    while (!done) {
-        // function("small", "", [](std::string_view data) {
-        //     std::cout << "hello i received this data = " << data << std::endl;
-        // });
+    int x = Based__get(client1, (char*)"counter", (char*)"", &based_cb);
 
+    std::cout << "x = " << x << std::endl;
+
+    obs.push_back(Based__observe(client1, (char*)"counter", (char*)"", &based_observe_cb));
+
+    while (!done) {
         std::getline(std::cin, cmd);
         if (cmd == "q") {
             done = true;

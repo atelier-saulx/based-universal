@@ -61,9 +61,8 @@ void callNapiObservableFunction(const char* data,
     };
     ObserveCallbackData* d = new ObserveCallbackData{data, checksum, error, id};
 
+    std::cout << "callNapiObservableFunction, id: " << id << std::endl;
     obsStore.at(id).BlockingCall(d, callback);
-    // obsStore.at(id).Release();
-    // obsStore.erase(id);
 }
 
 Napi::Value BasedFunction(const Napi::CallbackInfo& info) {
@@ -88,13 +87,7 @@ Napi::Value BasedFunction(const Napi::CallbackInfo& info) {
 
     auto fn = info[2].As<Napi::Function>();
 
-    fnStore[id] = Napi::ThreadSafeFunction::New(
-        napi_env,
-        fn,                 // JavaScript function called asynchronously
-        "callback",         // Name
-        0,                  // Unlimited queue
-        1,                  // Only one thread will use this initially
-        [](Napi::Env) {});  // Finalizer used to clean threads up
+    fnStore[id] = Napi::ThreadSafeFunction::New(napi_env, fn, "callback", 0, 2);
 
     return napi_env.Undefined();
 }
@@ -122,15 +115,9 @@ Napi::Value Observe(const Napi::CallbackInfo& info) {
 
     auto fn = info[2].As<Napi::Function>();
 
-    obsStore[id] = Napi::ThreadSafeFunction::New(
-        napi_env,
-        fn,                 // JavaScript function called asynchronously
-        "callback",         // Name
-        0,                  // Unlimited queue
-        1,                  // Only one thread will use this initially
-        [](Napi::Env) {});  // Finalizer used to clean threads up
+    obsStore[id] = Napi::ThreadSafeFunction::New(napi_env, fn, "callback-observe", 0, 2);
 
-    return napi_env.Undefined();
+    return Napi::Number::New(napi_env, id);
 }
 
 Napi::Value Unobserve(const Napi::CallbackInfo& info) {
@@ -202,13 +189,7 @@ Napi::Value Get(const Napi::CallbackInfo& info) {
 
     auto fn = info[2].As<Napi::Function>();
 
-    fnStore[id] = Napi::ThreadSafeFunction::New(
-        napi_env,
-        fn,                 // JavaScript function called asynchronously
-        "callback",         // Name
-        0,                  // Unlimited queue
-        1,                  // Only one thread will use this initially
-        [](Napi::Env) {});  // Finalizer used to clean threads up
+    fnStore[id] = Napi::ThreadSafeFunction::New(napi_env, fn, "callback-get", 0, 2);
 
     return napi_env.Undefined();
 }
