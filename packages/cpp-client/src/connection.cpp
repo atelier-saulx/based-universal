@@ -258,27 +258,7 @@ context_ptr WsConnection::on_tls_init() {
 }
 #endif
 #endif
-// std::shared_future<void> WsConnection::reconnect() {
-//     return std::async(std::launch::async, [&]() {
-//         if (m_status != ConnectionStatus::OPEN &&
-//             m_status != ConnectionStatus::TERMINATED_BY_USER) {
-//             // maximum timeout between attempts, in ms
-//             int timeout = m_reconnect_attempts > 15 ? 1500 : m_reconnect_attempts * 100;
-//             if (m_reconnect_attempts > 0) {
-//                 std::this_thread::sleep_for(std::chrono::milliseconds(timeout));
-//             }
-//             m_reconnect_attempts++;
-//             std::cout << "hello" << std::endl;
-//             if (m_cluster.length() > 0) {
-//                 std::cout << "hello2" << std::endl;
-//                 connect(m_cluster, m_org, m_project, m_env, m_key, m_optional_key);
-//             } else if (m_uri.length() > 0) {
-//                 std::cout << "hello3" << std::endl;
-//                 connect_to_uri(m_uri);
-//             }
-//         }
-//     });
-// }
+
 void WsConnection::set_handlers(ws_client::connection_ptr con) {
     // bind must be used if the function we're binding to doest have the right number of
     // arguments (hence the placeholders) these handlers must be set before calling connect, and

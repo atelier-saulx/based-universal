@@ -121,7 +121,6 @@ extern "C" int Based__function(based_id client_id,
                                char* name,
                                char* payload,
                                void (*cb)(const char*, const char*, int)) {
-    // std::function<void(std::string /*data*/, std::string /*error*/)> cb) {
     if (clients.find(client_id) == clients.end()) {
         std::cerr << "No such id found" << std::endl;
         return -1;

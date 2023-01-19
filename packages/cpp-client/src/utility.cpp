@@ -176,7 +176,7 @@ std::vector<uint8_t> Utility::encode_function_message(int32_t id,
     return buff;
 }
 
-std::vector<uint8_t> Utility::encode_observe_message(uint64_t id,
+std::vector<uint8_t> Utility::encode_observe_message(uint32_t id,
                                                      std::string name,
                                                      std::string& payload,
                                                      uint64_t checksum) {
@@ -217,7 +217,7 @@ std::vector<uint8_t> Utility::encode_observe_message(uint64_t id,
     return buff;
 }
 
-std::vector<uint8_t> Utility::encode_unobserve_message(int64_t obs_id) {
+std::vector<uint8_t> Utility::encode_unobserve_message(uint32_t obs_id) {
     // Type 2 = unsubscribe
     // | 4 header | 8 id |
 

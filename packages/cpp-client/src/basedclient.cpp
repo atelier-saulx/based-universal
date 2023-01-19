@@ -62,6 +62,7 @@ std::string BasedClient::get_service(std::string cluster,
                                      std::string name,
                                      std::string key,
                                      bool optional_key) {
+    // TODO: Implement this
     // m_con.get_service(...args)
 }
 
@@ -151,7 +152,7 @@ int BasedClient::observe(std::string name,
 
         // add cb for this new sub
         m_sub_callback[sub_id] = cb;
-        // add on_error for this new sub if it exists
+        // TODO: add on_error for this new sub if it exists
     }
 
     drain_queues();
@@ -207,6 +208,7 @@ void BasedClient::unobserve(int sub_id) {
 
     // if the list is now empty, add request to unobserve to queue
     if (m_observe_subs.at(obs_id).empty()) {
+        BASED_LOG("Unobserve request queued for obs_id %d", obs_id);
         std::vector<uint8_t> msg = Utility::encode_unobserve_message(obs_id);
         m_unobserve_queue.push_back(msg);
         // and remove the obs from the map of active ones.
@@ -331,6 +333,8 @@ void BasedClient::on_message(std::string message) {
     int32_t len = Utility::get_payload_len(header);
     int32_t is_deflate = Utility::get_payload_is_deflate(header);
 
+    BASED_LOG(">> Incoming message: type = %d, len = %d, is_deflate = %d", type, len, is_deflate);
+
     switch (type) {
         case IncomingType::FUNCTION_DATA: {
             int id = Utility::read_bytes_from_string(message, 4, 3);
@@ -363,6 +367,9 @@ void BasedClient::on_message(std::string message) {
                 payload = is_deflate ? Utility::inflate_string(message.substr(start, end))
                                      : message.substr(start, end);
             }
+
+            BASED_LOG("1>> Incoming message: obs_id = %d, checksum = %d, payload = %s", obs_id,
+                      checksum, payload.c_str());
 
             m_cache[obs_id].first = payload;
             m_cache[obs_id].second = checksum;
@@ -419,6 +426,9 @@ void BasedClient::on_message(std::string message) {
                 m_cache[obs_id].first = patched_payload;
                 m_cache[obs_id].second = checksum;
             }
+
+            BASED_LOG("2>> Incoming message: obs_id = %d, checksum = %d, patched_payload = %s",
+                      obs_id, checksum, patched_payload.c_str());
 
             if (m_observe_subs.find(obs_id) != m_observe_subs.end()) {
                 for (auto sub_id : m_observe_subs.at(obs_id)) {

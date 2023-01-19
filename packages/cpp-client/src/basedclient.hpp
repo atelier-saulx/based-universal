@@ -107,7 +107,7 @@ class BasedClient {
      * @param org Organization name
      * @param project Project name
      * @param env Environment name
-     * @param name Name of the service, for example "@based/hub"
+     * @param name Name of the service, for example \@based/hub
      * @param key Optional string, for named hubs or other named service.
      * @param optional_key Boolean, set to true if it should fall back to the default service in
      * case the named one is not found
