@@ -6,6 +6,12 @@
 
 #include "based.h"
 
+void based_auth_cb(const char* data) {
+    if (strlen(data) > 0) {
+        std::cout << "[AUTH_CB] " << data << std::endl;
+    }
+}
+
 void based_cb(const char* data, const char* error, int id) {
     int len_data = strlen(data);
     int len_error = strlen(error);
@@ -51,11 +57,11 @@ int main(int argc, char** argv) {
 
     std::list<int> obs;
 
-    int x = Based__get(client1, (char*)"counter", (char*)"", &based_cb);
+    // int x = Based__get(client1, (char*)"counter", (char*)"", &based_cb);
 
-    std::cout << "x = " << x << std::endl;
+    // std::cout << "x = " << x << std::endl;
 
-    obs.push_back(Based__observe(client1, (char*)"counter", (char*)"", &based_observe_cb));
+    // obs.push_back(Based__observe(client1, (char*)"counter", (char*)"", &based_observe_cb));
 
     while (!done) {
         std::getline(std::cin, cmd);
@@ -75,7 +81,7 @@ int main(int argc, char** argv) {
             std::string fn_name = cmd.substr(2);
             char* fn = &*fn_name.begin();
 
-            int id = Based__observe(client1, fn, (char*)"", &based_observe_cb);
+            int id = Based__observe(client1, fn, (char*)"{}", &based_observe_cb);
 
             obs.push_back(id);
         }
@@ -109,7 +115,11 @@ int main(int argc, char** argv) {
         }
 
         if (cmd.substr(0, 1) == "a") {
-            Based__auth(client1, "flurp", NULL);
+            std::string payload = cmd.substr(2);
+
+            char* p = &*payload.begin();
+
+            Based__auth(client1, p, &based_auth_cb);
         }
         if (cmd.substr(0, 1) == "c") {
             // Based__connect(client1, "http://localhost:7022/", "saulx", "demo", "production",

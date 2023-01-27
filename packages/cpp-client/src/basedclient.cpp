@@ -24,11 +24,7 @@ struct Observable {
     std::string name;
     std::string payload;
 };
-BasedClient::BasedClient()
-    : m_request_id(0),
-      m_sub_id(0),
-      m_auth_in_progress(false),
-      m_auth_required(true){};
+BasedClient::BasedClient() : m_request_id(0), m_sub_id(0), m_auth_in_progress(false){};
 
 /////////////////
 // Helper functions
@@ -246,6 +242,7 @@ void BasedClient::auth(std::string state, void (*cb)(const char*)) {
     m_auth_callback = cb;
 
     m_auth_queue = Utility::encode_auth_message(state);
+    drain_queues();
 }
 
 /////////////////////////////////////////////////////////////
@@ -473,9 +470,13 @@ void BasedClient::on_message(std::string message) {
             } else {
                 m_auth_state = payload;
             }
-            if (m_auth_callback) m_auth_callback(payload.c_str());
-
             m_auth_in_progress = false;
+            if (m_auth_callback) {
+                m_auth_callback(payload.c_str());
+                // we remove the callback because we don't want it to fire again if the server
+                // updates the client's auth state
+                m_auth_callback = NULL;
+            }
         }
             return;
         case IncomingType::ERROR_DATA: {

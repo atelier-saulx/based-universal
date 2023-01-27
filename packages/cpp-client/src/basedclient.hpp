@@ -24,7 +24,6 @@ class BasedClient {
     int32_t m_sub_id;
 
     bool m_auth_in_progress;
-    bool m_auth_required;
     std::string m_auth_state;
     std::string m_auth_request_state;
 
