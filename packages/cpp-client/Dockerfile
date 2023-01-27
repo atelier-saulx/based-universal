@@ -7,11 +7,17 @@ RUN apt-get update && \
     libcurl4-openssl-dev \
     libz-dev \
     libssl-dev
+    # cmake
 
 
 WORKDIR /build
 COPY ./src ./src
 COPY ./lib ./lib
+COPY ./include ./include
+COPY ./example ./example
+# COPY ./build-scripts ./build-scripts
+# COPY ./CMakeLists.txt ./CMakeLists.txt
 COPY ./Makefile .
 # CMD apt-cache search ^libcurl
 CMD make && cp distribute/libbased.so ./out/
+# CMD cd build-scripts && bash ./build-linux.sh && cp -r build_linux/Release/ ./out/

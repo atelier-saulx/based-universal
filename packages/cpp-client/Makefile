@@ -2,7 +2,6 @@
 
 LIB_DIRS = \
   lib/websocketpp \
-  lib/zlib \
   lib/nlohmann-json \
   lib/apply-patch \
   lib/asio/asio/include \
@@ -37,7 +36,7 @@ OBJS = basedclient.o \
 	utility.o \
 	based.o
 
-CXXFLAGS += -Wall -std=c++0x -D_WEBSOCKETPP_CPP11_STL_ -DASIO_STANDALONE
+CXXFLAGS += -Wall -std=c++0x -D_WEBSOCKETPP_CPP11_STL_ -DASIO_STANDALONE -DBASED_VERBOSE -DBASED_TLS
 
 all: tls
 
