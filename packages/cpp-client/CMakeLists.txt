@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20.0)
+cmake_minimum_required(VERSION 3.13.0)
 
 project(universal-based VERSION 1.0.1)
 
@@ -12,12 +12,6 @@ include_directories(include)
 if(NOT DEFINED ARCH_FOLDER)
   message(FATAL_ERROR "ARCH_FOLDER is not set, I don't know where to look for libraries")
 endif(NOT DEFINED ARCH_FOLDER)
-
-
-# message(WARNING ">>>>>>>>>>>>>>>>>>>>>> ${CMAKE_TOOLCHAIN_FILE}" )
-# message(FATAL_ERROR ">>>>>>>>>>>>>>>>>>>>>> ${CMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM}" )
-
-# find_package(CURL PATHS "lib/curl" NO_DEFAULT_PATH CONFIG REQUIRED)
 
 set(LIB_FOLDER "${CMAKE_CURRENT_LIST_DIR}/prebuilt-libs/lib/${ARCH_FOLDER}")
 
@@ -41,14 +35,14 @@ src/utility.cpp
 
 set_target_properties(based PROPERTIES VERSION ${CMAKE_PROJECT_VERSION} SOVERSION ${CMAKE_PROJECT_VERSION})
 
-add_executable(linked-example example/example.cpp)
+add_executable(example example/example.cpp)
 
 add_compile_definitions(ASIO_STANDALONE _WEBSOCKETPP_CPP11_STL_)
 add_compile_definitions(BASED_TLS)
-# add_compile_definitions(BASED_VERBOSE)
+add_compile_definitions(BASED_VERBOSE)
 
-target_link_libraries(linked-example PRIVATE based)
-target_include_directories(linked-example PRIVATE include)
+target_link_libraries(example PRIVATE based)
+target_include_directories(example PRIVATE include)
 
 target_link_libraries(based PRIVATE ${Z_LIBRARY})
 target_link_libraries(based PRIVATE ${CURL_LIBRARY})
