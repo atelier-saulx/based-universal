@@ -53,9 +53,6 @@ class WsConnection {
     static context_ptr on_tls_init();
 #endif
 #endif
-   private:  // Methods
-    std::shared_future<void> reconnect();
-
    private:  // Members
     ws_client m_endpoint;
     websocketpp::connection_hdl m_hdl;
@@ -66,7 +63,7 @@ class WsConnection {
     std::function<void()> m_on_open;
     std::function<void(std::string)> m_on_message;
     int m_reconnect_attempts;
-    int m_registry_index;
+    int m_selector_index;
 
     std::string m_cluster;
     std::string m_org;

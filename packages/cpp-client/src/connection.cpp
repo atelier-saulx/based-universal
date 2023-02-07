@@ -26,7 +26,7 @@ WsConnection::WsConnection()
       m_on_open(NULL),
       m_on_message(NULL),
       m_reconnect_attempts(0),
-      m_registry_index(0),
+      m_selector_index(0),
       m_cluster(""),
       m_org(""),
       m_project(""),
@@ -87,36 +87,46 @@ std::string WsConnection::get_service(std::string cluster,
     curl_easy_setopt(curl, CURLOPT_URL, url);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_function);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buf);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 3L);        // timeout after 3 seconds
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);        // timeout in seconds
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);  // TODO: do this better
 
-    res = curl_easy_perform(curl);  // get list of registry urls
+    res = curl_easy_perform(curl);  // get list of selector urls
     if (res != 0) {
         if (res == CURLE_OPERATION_TIMEDOUT) {
-            throw std::runtime_error("Operation timed out");
+            std::cerr << "operation timed out when getting selector list, retrying...";
+            return get_service(cluster, org, project, env, name, key, optional_key);
         }
-        std::cerr << "error with easy_perform, code: " << res << std::endl;
+        std::cerr << "error with easy_perform, code: " << res << ", retrying..." << std::endl;
+        return get_service(cluster, org, project, env, name, key, optional_key);
     }
 
-    json registries = json::array();
+    json selectors = json::array();
 
-    if (buf.length() > 0) registries = json::parse(buf);
-    else {}
+    if (buf.length() > 0) selectors = json::parse(buf);
+    else {
+        BASED_LOG("No selector found, retrying...\n");
+        return get_service(cluster, org, project, env, name, key, optional_key);
+    }
 
-    m_registry_index++;
-    if (m_registry_index >= registries.size()) m_registry_index = 0;
+    m_selector_index++;
+    if (m_selector_index >= selectors.size()) m_selector_index = 0;
 
-    std::string registry_url = registries.at(m_registry_index);
-    std::string req_url = registry_url + "/" + org + "." + project + "." + env + "." + name;
+    std::string selector_url = selectors.at(m_selector_index);
+    std::string req_url = selector_url + "/" + org + "." + project + "." + env + "." + name;
     if (key.length() > 0) req_url += "." + key;
     if (key.length() > 0 && optional_key) req_url += "$";
 
     buf = "";
     curl_easy_setopt(curl, CURLOPT_URL, req_url.c_str());
 
-    res = curl_easy_perform(curl);  // get service url from selected registry
-    if (res == CURLE_OPERATION_TIMEDOUT) {
-        throw std::runtime_error("Operation timed out");
+    res = curl_easy_perform(curl);  // get service url from selected selector
+    if (res != 0) {
+        if (res == CURLE_OPERATION_TIMEDOUT) {
+            std::cerr << "operation timed out when getting service url, retrying...";
+            return get_service(cluster, org, project, env, name, key, optional_key);
+        }
+        std::cerr << "error with easy_perform, code: " << res << ", retrying..." << std::endl;
+        return get_service(cluster, org, project, env, name, key, optional_key);
     }
 
     curl_easy_cleanup(curl);

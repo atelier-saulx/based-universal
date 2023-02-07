@@ -58,8 +58,15 @@ std::string BasedClient::get_service(std::string cluster,
                                      std::string name,
                                      std::string key,
                                      bool optional_key) {
-    // TODO: Implement this
-    // m_con.get_service(...args)
+    // TODO: This is currently blocking (no bueno), should be changed.
+    // Especially for bad connections
+    std::string url = m_con.get_service(cluster, org, project, env, name, key, optional_key);
+    if (url.rfind("wss://", 0) == 0) {
+        url.replace(0, 3, "https");
+    } else if (url.rfind("ws://", 0) == 0) {
+        url.replace(0, 2, "http");
+    }
+    return url;
 }
 
 void BasedClient::_connect_to_url(std::string url) {
@@ -98,8 +105,7 @@ int BasedClient::observe(std::string name,
      * So there's a queue, which is emptied on drain, but is refilled with the observables
      * stored in memory in the event of a reconnection.
      *
-     * These observables all have a list of listeners. Each listener has a cb callback
-     * and and optional on_error callback.
+     * These observables all have a list of listeners. Each listener has a cb callback.
      *
      * When all listeners are removed with .unobserve, the observable should be removed
      * and the unobserve request should be queued, to let the server know.
