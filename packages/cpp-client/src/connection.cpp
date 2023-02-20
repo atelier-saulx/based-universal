@@ -87,8 +87,12 @@ std::string WsConnection::get_service(std::string cluster,
     curl_easy_setopt(curl, CURLOPT_URL, url);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_function);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buf);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);        // timeout in seconds
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);  // TODO: do this better
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);  // timeout in seconds
+
+    // This is not good, but it's a pragmatic solution.
+    // No sensitive data is shared with this request, and the WebSocket connection will still be
+    // over TLS
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
 
     res = curl_easy_perform(curl);  // get list of selector urls
     if (res != 0) {

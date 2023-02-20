@@ -1,8 +1,6 @@
 #!/bin/sh
 set -e
 
-BUILD_TYPE="Release" # Debug or Release
-
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 mkdir -p "$SCRIPT_DIR/build_ios_sim"
 

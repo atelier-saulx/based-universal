@@ -46,6 +46,9 @@ int main(int argc, char** argv) {
     Based__connect(client1, (char*)"https://d15p61sp2f2oaj.cloudfront.net", (char*)"airhub",
                    (char*)"airhub", (char*)"edge", (char*)"@based/edge", (char*)"", false);
 
+    // Based__connect(client1, (char*)"http://localhost:7022", (char*)"saulx", (char*)"hello",
+    //                (char*)"production", (char*)"@based/edge", (char*)"", false);
+
     // std::string res = Based__get_service(client1, (char*)"https://d15p61sp2f2oaj.cloudfront.net",
     //                                      (char*)"saulx", (char*)"demo", (char*)"production",
     //                                      (char*)"@based/edge", (char*)"", true);
@@ -70,58 +73,71 @@ int main(int argc, char** argv) {
             continue;
         }
 
-        if (cmd.substr(0, 1) == "r") {
+        if (cmd.substr(0, 7) == "service") {
+            auto url = Based__get_service(client1, (char*)"https://d15p61sp2f2oaj.cloudfront.net",
+                                          (char*)"airhub", (char*)"airhub", (char*)"edge",
+                                          (char*)"@based/edge", (char*)"", false);
+            std::cout << "Service url! = " << url << std::endl;
+        } else if (cmd.substr(0, 5) == "login") {
+            std::string payload = cmd.substr(6);
+            std::cout << "Payload =" << payload << std::endl;
+
+            char* p = &*payload.begin();
+
+            Based__function(client1, (char*)"login", p, &based_cb);
+        } else if (cmd.substr(0, 3) == "get") {
+            std::string payload = cmd.substr(4);
+            std::cout << "Payload =" << payload << std::endl;
+
+            char* p = &*payload.begin();
+
+            Based__function(client1, (char*)"based-db-get", p, &based_cb);
+        } else if (cmd.substr(0, 7) == "flights") {
+            std::string payload = cmd.substr(8);
+            std::cout << "Payload =" << payload << std::endl;
+
+            char* p = &*payload.begin();
+
+            Based__observe(client1, (char*)"flights-observeAll", p, &based_observe_cb);
+        } else if (cmd.substr(0, 1) == "r") {
             int rem_id = atoi(cmd.substr(2).c_str());
             Based__unobserve(client1, rem_id);
             obs.remove(rem_id);
             continue;
-        }
-
-        if (cmd.substr(0, 1) == "o") {
+        } else if (cmd.substr(0, 1) == "o") {
             std::string fn_name = cmd.substr(2);
             char* fn = &*fn_name.begin();
 
             int id = Based__observe(client1, fn, (char*)"{}", &based_observe_cb);
 
             obs.push_back(id);
-        }
-
-        if (cmd.substr(0, 1) == "g") {
+        } else if (cmd.substr(0, 1) == "g") {
             std::string fn_name = cmd.substr(2);
             char* fn = &*fn_name.begin();
 
             Based__get(client1, fn, (char*)"", &based_cb);
-        }
-
-        if (cmd.substr(0, 1) == "f") {
+        } else if (cmd.substr(0, 1) == "f") {
             std::string fn_name = cmd.substr(2);
             std::cout << "Function " << fn_name << std::endl;
             char* fn = &*fn_name.begin();
 
             Based__function(client1, fn, (char*)"", &based_cb);
-        }
-
-        if (cmd.substr(0, 1) == "s") {
+        } else if (cmd.substr(0, 1) == "s") {
             std::string payload = cmd.substr(2);
             std::cout << "Payload =" << payload << std::endl;
 
             char* p = &*payload.begin();
 
             Based__function(client1, (char*)"based-db-set", p, &based_cb);
-        }
-
-        if (cmd.substr(0, 1) == "d") {
+        } else if (cmd.substr(0, 1) == "d") {
             Based__disconnect(client1);
-        }
-
-        if (cmd.substr(0, 1) == "a") {
+        } else if (cmd.substr(0, 1) == "a") {
             std::string payload = cmd.substr(2);
 
             char* p = &*payload.begin();
 
             Based__auth(client1, p, &based_auth_cb);
-        }
-        if (cmd.substr(0, 1) == "c") {
+        } else if (cmd.substr(0, 1) == "c") {
             // Based__connect(client1, "http://localhost:7022/", "saulx", "demo", "production",
             //                "@based/edge", "", false);
             Based__connect_to_url(client1, (char*)"wss://localhost:9910");

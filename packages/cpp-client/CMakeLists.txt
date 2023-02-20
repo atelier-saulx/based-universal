@@ -2,6 +2,18 @@ cmake_minimum_required(VERSION 3.13.0)
 
 project(universal-based VERSION 1.1.0)
 
+if(NOT DEFINED ARCH_FOLDER)
+  message(FATAL_ERROR "ARCH_FOLDER is not set, I don't know where to look for libraries")
+endif(NOT DEFINED ARCH_FOLDER)
+
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE "Release")
+endif()
+
+set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY BOTH)
+set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE BOTH)
+set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH)
+
 include_directories(lib/websocketpp)
 include_directories(lib/nlohmann-json)
 include_directories(lib/apply-patch)
@@ -9,22 +21,16 @@ include_directories(lib/asio/asio/include)
 include_directories(prebuilt-libs/include/)
 include_directories(include)
 
-if(NOT DEFINED ARCH_FOLDER)
-  message(FATAL_ERROR "ARCH_FOLDER is not set, I don't know where to look for libraries")
-endif(NOT DEFINED ARCH_FOLDER)
-
 set(LIB_FOLDER "${CMAKE_CURRENT_LIST_DIR}/prebuilt-libs/lib/${ARCH_FOLDER}")
 
 find_library(CURL_LIBRARY NO_CACHE REQUIRED NO_DEFAULT_PATH NAMES curl HINTS "${LIB_FOLDER}")
 find_library(SSL_LIBRARY NO_CACHE REQUIRED NO_DEFAULT_PATH NAMES ssl HINTS "${LIB_FOLDER}")
 find_library(CRYPTO_LIBRARY NO_CACHE REQUIRED NO_DEFAULT_PATH NAMES crypto HINTS "${LIB_FOLDER}")
-find_library(NGHTTP2_LIBRARY NO_CACHE REQUIRED NO_DEFAULT_PATH NAMES nghttp2 HINTS "${LIB_FOLDER}")
+# find_library(NGHTTP2_LIBRARY NO_CACHE REQUIRED NO_DEFAULT_PATH NAMES nghttp2 HINTS "${LIB_FOLDER}")
 find_library(Z_LIBRARY z REQUIRED)
-
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_VERBOSE_MAKEFILE on)
-
 
 add_library(based SHARED
 src/based.cpp
@@ -49,5 +55,5 @@ target_link_libraries(based PRIVATE ${Z_LIBRARY})
 target_link_libraries(based PRIVATE ${CURL_LIBRARY})
 target_link_libraries(based PRIVATE ${SSL_LIBRARY})
 target_link_libraries(based PRIVATE ${CRYPTO_LIBRARY})
-target_link_libraries(based PRIVATE ${NGHTTP2_LIBRARY})
+# target_link_libraries(based PRIVATE ${NGHTTP2_LIBRARY})
 

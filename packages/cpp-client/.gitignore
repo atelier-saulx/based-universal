@@ -12,7 +12,8 @@ docker-build
 
 distribute/*
 
-build
+build/*
+!build/build.sh
 build_darwin
 build_ios
 build_ios_sim
