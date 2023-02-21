@@ -7,3 +7,6 @@
 [submodule "packages/cpp-client/lib/asio"]
 	path = packages/cpp-client/lib/asio
 	url = git@github.com:chriskohlhoff/asio.git
+[submodule "packages/kotlin-client"]
+	path = packages/kotlin-client
+	url = git@github.com:atelier-saulx/based-universal.git
