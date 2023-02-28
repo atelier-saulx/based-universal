@@ -1,6 +1,6 @@
 allprojects {
     group = "com.saulx.based-client"
-    version = "0.0.1"
+    version = "0.0.4"
 
     repositories {
         mavenLocal()
