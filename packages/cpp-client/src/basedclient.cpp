@@ -495,7 +495,6 @@ void BasedClient::on_message(std::string message) {
             }
 
             json error = json::parse(payload);
-            // std::cout << "payload = " << error << std::endl;
             // fire once
             if (error.find("requestId") != error.end()) {
                 auto id = error.at("requestId");
@@ -530,6 +529,15 @@ void BasedClient::on_message(std::string message) {
                         m_observe_subs.erase(sub_id);
                         m_sub_to_obs.erase(sub_id);
                     }
+                }
+
+                if (m_get_subs.find(obs_id) != m_get_subs.end()) {
+                    for (auto sub_id : m_get_subs.at(obs_id)) {
+                        auto fn = m_get_sub_callbacks.at(sub_id);
+                        fn("", payload.c_str(), sub_id);
+                        m_get_sub_callbacks.erase(sub_id);
+                    }
+                    m_get_subs.at(obs_id).clear();
                 }
             }
         }
