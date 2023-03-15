@@ -49,6 +49,7 @@ class BasedClient : DisposableHandle {
         val objState = """{ "token": "$state" }"""
         return withContext(Dispatchers.IO) {
             suspendCoroutine {
+                println("auth: sending $objState")
                 libraryInstance.Based__auth(clientId, objState, object : BasedLibrary.AuthCallback {
                     override fun invoke(data: String) {
                         println("auth :: callback data '$data'")
@@ -62,6 +63,7 @@ class BasedClient : DisposableHandle {
 
     suspend fun get(name: String, payload: String): String {
         return suspendCoroutine {
+            println("$name :: sending '$payload'")
             libraryInstance.Based__get(clientId, name, payload, object : BasedLibrary.GetCallback {
 
                 override fun invoke(data: String, error: String) {
@@ -116,6 +118,7 @@ class BasedClient : DisposableHandle {
 
     fun observe(name: String, payload: String): Flow<String> {
         return callbackFlow {
+            println("$name :: sending '$payload'")
             val observerId =
                 libraryInstance.Based__observe(clientId, name, payload, object :
                     BasedLibrary.ObserveCallback {
