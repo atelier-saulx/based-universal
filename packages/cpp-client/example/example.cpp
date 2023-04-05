@@ -92,13 +92,13 @@ int main(int argc, char** argv) {
             char* p = &*payload.begin();
 
             Based__function(client1, (char*)"based-db-get", p, &based_cb);
-        } else if (cmd.substr(0, 7) == "flights") {
-            std::string payload = cmd.substr(8);
+        } else if (cmd.substr(0, 2) == "ff") {
+            std::string payload = cmd.substr(3);
             std::cout << "Payload =" << payload << std::endl;
 
             char* p = &*payload.begin();
 
-            Based__observe(client1, (char*)"flights-observeAll", p, &based_observe_cb);
+            Based__get(client1, (char*)"flights-observeAll", p, &based_cb);
         } else if (cmd.substr(0, 1) == "r") {
             int rem_id = atoi(cmd.substr(2).c_str());
             Based__unobserve(client1, rem_id);
@@ -137,11 +137,12 @@ int main(int argc, char** argv) {
             char* p = &*payload.begin();
 
             Based__auth(client1, p, &based_auth_cb);
-        } else if (cmd.substr(0, 1) == "c") {
-            // Based__connect(client1, "http://localhost:7022/", "saulx", "demo", "production",
-            //                "@based/edge", "", false);
-            Based__connect_to_url(client1, (char*)"wss://localhost:9910");
         }
+        // else if (cmd.substr(0, 1) == "c") {
+        //     // Based__connect(client1, "http://localhost:7022/", "saulx", "demo", "production",
+        //     //                "@based/edge", "", false);
+        //     Based__connect_to_url(client1, (char*)"wss://localhost:9910");
+        // }
 
         std::cout << "obs = ";
         for (auto el : obs) {

@@ -1,18 +1,50 @@
-#!/bin/bash
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
-if [ $# -eq 0 ]; then
- echo "specify teamID as first argument"
- exit 1
-fi
+# Android targets
 
-shopt -s nullglob
-for file in build-scripts/*.sh
-do
-  echo Executing "$file"
-  export XCODE_TEAMID="$1"
-  /bin/bash "$file"
+TARGETS="armeabi-v7a arm64-v8a x86 x86_64"
+NDK_FOLDER=${HOME}/Library/Android/sdk/ndk/25.2.9519653
+ANDROID_API_VERSION=33
+
+
+for TARGET in ${TARGETS}
+do    
+    # create one build dir per target architecture
+    TARGET_DIR=${SCRIPT_DIR}/build/android/${TARGET}
+    mkdir -p ${TARGET_DIR}
+    cd ${TARGET_DIR}
+
+    cmake -DCMAKE_SYSTEM_NAME=Android \
+    -DCMAKE_ANDROID_ARCH_ABI=${TARGET} \
+    -DARCH_FOLDER=Android-${TARGET} \
+    -DCMAKE_ANDROID_NDK=${NDK_FOLDER} \
+    -DCMAKE_SYSTEM_VERSION=${ANDROID_API_VERSION} \
+    -DCMAKE_ANDROID_NDK_DEPRECATED_HEADERS=TRUE \
+    -S ../../.. -B .
+
+    cmake --build .
+    cd -
 done
-shopt -u nullglob
 
-rm -rf Based.xcframework
-xcodebuild -create-xcframework -library build-scripts/build_catalyst/Release/libbased.1.1.0.dylib -headers include -library build-scripts/build_darwin/Release/libbased.1.1.0.dylib -headers include -library build-scripts/build_ios/Release-iphoneos/libbased.1.1.0.dylib -headers include -library build-scripts/build_ios_sim/Release-iphonesimulator/libbased.1.1.0.dylib -headers include  -output Based.xcframework
+
+# TODO: Apple targets
+
+TARGETS="catalyst darwin ios ios-sim"
+
+for TARGET in ${TARGETS}
+do    
+    # create one build dir per target architecture
+    TARGET_DIR=${SCRIPT_DIR}/build/apple/${TARGET}
+    mkdir -p ${TARGET_DIR}
+    cd ${TARGET_DIR}
+
+    cmake -G"Xcode" -DCMAKE_TOOLCHAIN_FILE=../../../toolchains/${TARGET}.cmake \
+    -DCMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM="36CCRKC437" \
+    -S ../../.. -B .
+    
+    cmake --build . --config Release
+
+    # make -j32
+
+    cd -
+done
