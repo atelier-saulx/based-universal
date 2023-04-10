@@ -1,6 +1,7 @@
 #include "utility.hpp"
 
 #include <zlib.h>
+#include <algorithm>
 #include <cstdint>
 #include <iomanip>
 #include <iostream>
@@ -339,4 +340,115 @@ int64_t Utility::read_bytes_from_string(std::string& buff, int start, int len) {
         res = res * 256 + (uint8_t)data[i];
     }
     return res;
+}
+
+std::string cycle_chars(std::vector<std::string> encode_chars, int encode_char_index) {
+    if (encode_char_index % 2) {
+        return encode_chars.at(encode_chars.size() - encode_char_index);
+    }
+    return encode_chars.at(encode_char_index);
+}
+
+std::string Utility::encode(std::string& input) {
+    int encode_char_index = 0;
+    int char_len = 9;
+    std::vector<std::string> encode_chars({"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"});
+    int encode_chars_len = encode_chars.size();
+
+    std::map<std::string, std::string> char_map{
+        // clang-format off
+        {"0", "l",},
+        {"1", "m",},
+        {"2", "n",},
+        {"3", "o",},
+        {"4", "p",},
+        {"5", "q",},
+        {"6", "r",},
+        {"7", "s",},
+        {"8", "t",},
+        {"9", "u",},
+        {"localhost", "a",},
+        {"based.io", "b",},
+        {"based.dev", "c",},
+        {"@based", "d",},
+        {"/env-hub", "e",},
+        {"admin", "f",},
+        {"hub", "g",},
+        {"-", "h",},
+        {",", "i",},
+        {".", "j",},
+        {"?", "k"},
+        // clang-format on
+    };
+
+    std::string str = "";
+    for (int i = 0; i < input.length(); i++) {
+        bool added = false;
+        for (int j = char_len - 1; j > -1; j--) {
+            if (i + j > input.length() - 1) {
+                continue;
+            }
+            std::string s = "";
+            for (int n = 0; n < j + 1; n++) {
+                s += input.at(i + n);
+            }
+            if (char_map.find(s) != char_map.end()) {
+                encode_char_index++;
+                if (encode_char_index >= encode_chars_len) {
+                    encode_char_index = 0;
+                }
+
+                str += cycle_chars(encode_chars, encode_char_index) + char_map.at(s);
+                i += s.length() - 1;
+                j = -1;
+                added = true;
+            }
+        }
+        if (!added) {
+            str += input.at(i);
+        }
+    }
+    return str;
+}
+
+std::string Utility::decode(std::string& input) {
+    std::vector<std::string> encode_chars({"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"});
+    std::map<std::string, std::string> reverse_char_map{
+        // clang-format off
+        {"a", "localhost"},
+        {"b", "based.io"},
+        {"c", "based.dev"},
+        {"d", "@based"},
+        {"e", "/env-hub"},
+        {"f", "admin"},
+        {"g", "hub"},
+        {"h", "-"},
+        {"i", ","},
+        {"j", "."},
+        {"k", "?"},
+        {"l", "0"},
+        {"m", "1"},
+        {"n", "2"},
+        {"o", "3"},
+        {"p", "4"},
+        {"q", "5"},
+        {"r", "6"},
+        {"s", "7"},
+        {"t", "8"},
+        {"u", "9"}
+        // clang-format on
+    };
+
+    std::string str = "";
+    for (int i = 0; i < input.length(); i++) {
+        std::string c{input.at(i)};
+        if (std::find(encode_chars.begin(), encode_chars.end(), c) != encode_chars.end()) {
+            std::string key{input.at(i + 1)};
+            str += reverse_char_map.at(key);
+            i++;
+        } else {
+            str += c;
+        }
+    }
+    return str;
 }

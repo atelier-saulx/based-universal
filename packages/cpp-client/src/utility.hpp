@@ -29,6 +29,9 @@ int32_t get_payload_is_deflate(int32_t header);
 int32_t read_header(std::string buff);
 int64_t read_bytes_from_string(std::string& buff, int start, int len);
 
+std::string encode(std::string& str);
+std::string decode(std::string& str);
+
 }  // namespace Utility
 
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
