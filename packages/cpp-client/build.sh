@@ -17,16 +17,16 @@ ANDROID_API_VERSION=33
 
 for TARGET in ${TARGETS}
 do    
-    if [ ! -z ${USER_TARGETS+x} ];
+    # Check for user defined targets
+    if [ ! -z ${USER_TARGETS+x} ]; # Is this var defined?
         then
-            if [[ ! " ${USER_TARGETS[*]} " =~ " ${TARGET} " ]]; 
-            then
-                echo "Skipping ${TARGET}";
-                continue;
-            else echo "Building ${TARGET}"
+            if [[ ! " ${USER_TARGETS[*]} " =~ " ${TARGET} " ]]; # Does this list contain the current target?
+                then
+                    echo "Skipping ${TARGET}";
+                    continue;
+                else echo "Building ${TARGET}"
             fi
-    fi
-    # create one build dir per target architecture
+    fi    # create one build dir per target architecture
     TARGET_DIR=${SCRIPT_DIR}/build/android/${TARGET}
     mkdir -p ${TARGET_DIR}
     cd ${TARGET_DIR}
@@ -43,20 +43,20 @@ do
     cd -
 done
 
-
-# TODO: Apple targets
+# Apple targets
 
 TARGETS="catalyst darwin ios ios-sim"
 
 for TARGET in ${TARGETS}
-do    
-    if [ ! -z ${USER_TARGETS+x} ];
+do
+    # Check for user defined targets
+    if [ ! -z ${USER_TARGETS+x} ]; # Is this var defined?
         then
-            if [[ ! " ${USER_TARGETS[*]} " =~ " ${TARGET} " ]]; 
-            then
-                echo "Skipping ${TARGET}";
-                continue;
-            else echo "Building ${TARGET}"
+            if [[ ! " ${USER_TARGETS[*]} " =~ " ${TARGET} " ]]; # Does this list contain the current target?
+                then
+                    echo "Skipping ${TARGET}";
+                    continue;
+                else echo "Building ${TARGET}"
             fi
     fi
     # create one build dir per target architecture
