@@ -1,3 +1,11 @@
+while getopts t: flag
+do
+    case "${flag}" in
+        t) USER_TARGETS=${OPTARG};;
+    esac
+done
+
+
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 # Android targets
@@ -9,6 +17,15 @@ ANDROID_API_VERSION=33
 
 for TARGET in ${TARGETS}
 do    
+    if [ ! -z ${USER_TARGETS+x} ];
+        then
+            if [[ ! " ${USER_TARGETS[*]} " =~ " ${TARGET} " ]]; 
+            then
+                echo "Skipping ${TARGET}";
+                continue;
+            else echo "Building ${TARGET}"
+            fi
+    fi
     # create one build dir per target architecture
     TARGET_DIR=${SCRIPT_DIR}/build/android/${TARGET}
     mkdir -p ${TARGET_DIR}
@@ -33,6 +50,15 @@ TARGETS="catalyst darwin ios ios-sim"
 
 for TARGET in ${TARGETS}
 do    
+    if [ ! -z ${USER_TARGETS+x} ];
+        then
+            if [[ ! " ${USER_TARGETS[*]} " =~ " ${TARGET} " ]]; 
+            then
+                echo "Skipping ${TARGET}";
+                continue;
+            else echo "Building ${TARGET}"
+            fi
+    fi
     # create one build dir per target architecture
     TARGET_DIR=${SCRIPT_DIR}/build/apple/${TARGET}
     mkdir -p ${TARGET_DIR}
