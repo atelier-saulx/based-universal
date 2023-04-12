@@ -29,8 +29,10 @@ int32_t get_payload_is_deflate(int32_t header);
 int32_t read_header(std::string buff);
 int64_t read_bytes_from_string(std::string& buff, int start, int len);
 
-std::string encode(std::string& str);
-std::string decode(std::string& str);
+std::string encodeURIComponent(std::string decoded);
+std::string encode(std::string str);
+std::string decode(std::string str, std::vector<std::string> encode_chars);
+std::vector<std::string> split_string(std::string input, std::string delimiter);
 
 }  // namespace Utility
 

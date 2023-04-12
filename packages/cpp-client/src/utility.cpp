@@ -6,10 +6,53 @@
 #include <iomanip>
 #include <iostream>
 #include <json.hpp>
+#include <regex>
 #include <sstream>
 #include <stdexcept>
 
 using json = nlohmann::json;
+
+std::string string_from_char_code(uint8_t c) {
+    std::string res(1, (char)c);
+    return res;
+}
+
+std::vector<std::string> Utility::split_string(std::string input, std::string delimiter) {
+    std::vector<std::string> res;
+
+    if (delimiter == "") {
+        for (int i = 0; i < input.size(); i++) {
+            res.push_back(input.substr(i, 1));
+        }
+        return res;
+    }
+
+    size_t last = 0;
+    size_t next = 0;
+    while ((next = input.find(delimiter, last)) != std::string::npos) {
+        res.push_back(input.substr(last, next - last));
+        last = next + delimiter.length();
+    }
+    res.push_back(input.substr(last));
+    return res;
+}
+
+/**
+ * Courtesy of https://gist.github.com/arthurafarias/56fec2cd49a32f374c02d1df2b6c350f
+ */
+std::string Utility::encodeURIComponent(std::string decoded) {
+    std::ostringstream oss;
+    std::regex r("[!'\\(\\)*-.0-9A-Za-z_~]");
+
+    for (char& c : decoded) {
+        if (std::regex_match((std::string){c}, r)) {
+            oss << c;
+        } else {
+            oss << "%" << std::uppercase << std::hex << (0xff & c);
+        }
+    }
+    return oss.str();
+}
 
 std::string Utility::inflate_string(const std::string& str) {
     // Original version of this function found on https://panthema.net/2007/0328-ZLibString.html,
@@ -349,7 +392,7 @@ std::string cycle_chars(std::vector<std::string> encode_chars, int encode_char_i
     return encode_chars.at(encode_char_index);
 }
 
-std::string Utility::encode(std::string& input) {
+std::string Utility::encode(std::string input) {
     int encode_char_index = 0;
     int char_len = 9;
     std::vector<std::string> encode_chars({"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"});
@@ -411,40 +454,54 @@ std::string Utility::encode(std::string& input) {
     return str;
 }
 
-std::string Utility::decode(std::string& input) {
-    std::vector<std::string> encode_chars({"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"});
-    std::map<std::string, std::string> reverse_char_map{
-        // clang-format off
-        {"a", "localhost"},
-        {"b", "based.io"},
-        {"c", "based.dev"},
-        {"d", "@based"},
-        {"e", "/env-hub"},
-        {"f", "admin"},
-        {"g", "hub"},
-        {"h", "-"},
-        {"i", ","},
-        {"j", "."},
-        {"k", "?"},
-        {"l", "0"},
-        {"m", "1"},
-        {"n", "2"},
-        {"o", "3"},
-        {"p", "4"},
-        {"q", "5"},
-        {"r", "6"},
-        {"s", "7"},
-        {"t", "8"},
-        {"u", "9"}
-        // clang-format on
+std::string Utility::decode(std::string input, std::vector<std::string> encode_chars) {
+    std::map<std::string, std::string> reverse_char_map;
+    int char_len = 1;
+    std::vector<std::string> chars{
+        ",",        ".based.dev", "localhost:", "localhost", "based.io", "based.dev", "@based",
+        "/env-hub", "admin",      "hub",        "900",       "90",       "443",       "80",
+        ":",        "%",          "/",          "=",         "<",        "?",         ".",
     };
+
+    std::vector<std::string> real_chars = chars;
+    real_chars.insert(real_chars.end(), encode_chars.begin(), encode_chars.end());
+
+    std::vector<std::string> replacement;
+
+    uint8_t idx = 0;
+    for (auto& v : real_chars) {
+        if (v.length() > char_len) {
+            char_len = v.length();
+        }
+        if (idx > 25) {
+            replacement.push_back(std::to_string(idx - 26));
+        } else {
+            replacement.push_back(string_from_char_code(97 + idx));
+        }
+        idx++;
+    }
+
+    for (size_t i = 0; i < real_chars.size(); i++) {
+        reverse_char_map[replacement.at(i)] = real_chars.at(i);
+        // std::cout << "{ " << replacement.at(i) << ", " << reverse_char_map.at(replacement.at(i))
+        //           << "}" << std::endl;
+    }
+
+    // std::cout << "-------> real_chars.size: " << real_chars.size() << std::endl;
+    // std::cout << "-------> input.size: " << input.size() << std::endl;
+    // std::cout << "-------> encode_chars.size: " << encode_chars.size() << std::endl;
+    // std::cout << "-------> reverse_char_map.size: " << reverse_char_map.size() << std::endl;
 
     std::string str = "";
     for (int i = 0; i < input.length(); i++) {
+        // std::cout << "++++++++ input.at(" << i << ") = " << input.at(i) << std::endl;
         std::string c{input.at(i)};
         if (std::find(encode_chars.begin(), encode_chars.end(), c) != encode_chars.end()) {
             std::string key{input.at(i + 1)};
+            // std::cout << "++++++++ key = " << key << std::endl;
             str += reverse_char_map.at(key);
+            // std::cout << "++++++++ reverse_char_map.at(key) = " << reverse_char_map.at(key)
+            //   << std::endl;
             i++;
         } else {
             str += c;

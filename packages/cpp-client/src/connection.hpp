@@ -16,6 +16,19 @@ typedef websocketpp::client<websocketpp::config::asio_client> ws_client;  // No 
 
 enum ConnectionStatus { OPEN = 0, CONNECTING, CLOSED, FAILED, TERMINATED_BY_USER };
 
+struct BasedConnectOpt {
+    std::string cluster;
+    std::string org;
+    std::string project;
+    std::string env;
+    std::string name;
+    std::string key;
+    bool optional_key;
+    std::string url;
+    std::string* discovery_urls;
+    std::map<std::string, std::string> headers;
+};
+
 class WsConnection {
     // eventually there should be some logic here to handle inactivity.
    public:
@@ -34,13 +47,7 @@ class WsConnection {
     void set_message_handler(std::function<void(std::string)> on_message);
     void send(std::vector<uint8_t> message);
     ConnectionStatus status();
-    std::string get_service(std::string cluster,
-                            std::string org,
-                            std::string project,
-                            std::string env,
-                            std::string name,
-                            std::string key,
-                            bool optional_key);
+    std::string discover_service(BasedConnectOpt opts, bool http);
 
     void set_handlers(ws_client::connection_ptr con);
 #ifdef BASED_TLS

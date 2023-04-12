@@ -3,7 +3,7 @@
 #include <json.hpp>
 #include "utility.hpp"
 
-#define DEFAULT_CLUSTER_URL "https://d15p61sp2f2oaj.cloudfront.net"
+#define DEFAULT_CLUSTER_NAME "production"
 
 using namespace nlohmann::literals;
 using json = nlohmann::json;
@@ -15,6 +15,99 @@ using json = nlohmann::json;
 static size_t write_function(void* contents, size_t size, size_t nmemb, void* userp) {
     ((std::string*)userp)->append((char*)contents, size * nmemb);
     return size * nmemb;
+}
+
+size_t get_request_id_header(char* buffer, size_t size, size_t nitems, void* userdata) {
+    size_t numbytes = size * nitems;
+    std::string str(buffer, numbytes);
+    if (str.rfind("x-request-id", 0) == 0) {
+        // TODO: Is this data always padded with 2 extra characters, or can it be different?
+        ((std::string*)userdata)->assign((char*)buffer, numbytes - 2);
+    }
+    return numbytes;
+}
+
+std::string gen_cache(BasedConnectOpt opts) {
+    std::string name = opts.name.length() > 0 ? opts.name : "@based/env-hub";
+    return name;
+}
+
+std::string gen_discovery_url(BasedConnectOpt opts) {
+    std::string url;
+    if (opts.cluster.length() > 0 && opts.cluster != "production") {
+        if (opts.cluster == "local") {
+            // TODO: implement getServicePort to allow this
+            throw std::runtime_error(
+                "Cannot connect to local using discovery_url generation, please use a direct url");
+        }
+        url = "https://" + opts.org + "-" + opts.project + "-" + opts.env + "-" + opts.cluster +
+              ".based.dev";
+        return url;
+    }
+    url = "https://" + opts.org + "-" + opts.project + "-" + opts.env + ".based.dev";
+    return url;
+}
+
+std::string make_request(std::string url, BasedConnectOpt opts) {
+    CURL* curl;
+    struct curl_slist* list = NULL;
+    CURLcode res;
+    std::string request_id_header;
+    std::string buf;
+
+    curl = curl_easy_init();
+    if (!curl) {
+        throw std::runtime_error("curl object failed to initialize");
+    }
+
+    // Set up curl
+    std::string sequence_id_header = "sequence-id: " + gen_cache(opts);
+    list = curl_slist_append(list, sequence_id_header.c_str());
+
+    if (opts.headers.size() > 0) {
+        for (auto const& header : opts.headers) {
+            std::string header_str = header.first + ": " + header.second;
+            list = curl_slist_append(list, header_str.c_str());
+        }
+    }
+
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, list);
+
+    std::string connect_url = url + "/status";
+    curl_easy_setopt(curl, CURLOPT_URL, connect_url.c_str());
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_function);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buf);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);  // timeout in seconds
+    curl_easy_setopt(curl, CURLOPT_HEADER, 1L);
+    curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, get_request_id_header);
+    curl_easy_setopt(curl, CURLOPT_HEADERDATA, &request_id_header);
+
+    // TODO: fix it
+    // This is not good, but it's a pragmatic solution for now.
+    // No sensitive data is shared with this request, and the WebSocket connection will still be
+    // over TLS
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
+
+    res = curl_easy_perform(curl);
+
+    if (res != CURLE_OK) {
+        fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+    }
+
+    auto header_value = Utility::split_string(request_id_header, ": ")[1];
+    auto encode_chars = Utility::split_string(header_value.substr(0, 6), "");
+    auto encoded_value = header_value.substr(6);
+
+    std::string decoded_value = Utility::decode(encoded_value, encode_chars);
+
+    auto idx = decoded_value.rfind(",");
+
+    std::string access_key = Utility::encodeURIComponent(decoded_value.substr(idx + 1));
+    std::string final_url = decoded_value.substr(0, idx) + "/" + access_key;
+
+    curl_easy_cleanup(curl);
+
+    return final_url;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -64,78 +157,18 @@ WsConnection::~WsConnection() {
     BASED_LOG("Destroyed WsConnection obj");
 };
 
-std::string WsConnection::get_service(std::string cluster,
-                                      std::string org,
-                                      std::string project,
-                                      std::string env,
-                                      std::string name,
-                                      std::string key,
-                                      bool optional_key) {
-    const char* url;
-    if (cluster.length() < 1) url = DEFAULT_CLUSTER_URL;
-    else url = cluster.c_str();
-
-    CURL* curl;
-    CURLcode res;
-    std::string buf;
-
-    curl = curl_easy_init();
-    if (!curl) {
-        throw std::runtime_error("curl object failed to initialize");
-    }
-    // Set up curl
-    curl_easy_setopt(curl, CURLOPT_URL, url);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_function);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buf);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);  // timeout in seconds
-
-    // This is not good, but it's a pragmatic solution.
-    // No sensitive data is shared with this request, and the WebSocket connection will still be
-    // over TLS
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
-
-    res = curl_easy_perform(curl);  // get list of selector urls
-    if (res != 0) {
-        if (res == CURLE_OPERATION_TIMEDOUT) {
-            std::cerr << "operation timed out when getting selector list, retrying...";
-            return get_service(cluster, org, project, env, name, key, optional_key);
+std::string WsConnection::discover_service(BasedConnectOpt opts, bool http) {
+    std::string url;
+    if (opts.url.length() > 0) {
+        url = opts.url;
+        if (http && (url.rfind("wss://", 0) == 0)) {
+            url.replace(0, 3, "https");
         }
-        std::cerr << "error with easy_perform, code: " << res << ", retrying..." << std::endl;
-        return get_service(cluster, org, project, env, name, key, optional_key);
+        return url;
     }
-
-    json selectors = json::array();
-
-    if (buf.length() > 0) selectors = json::parse(buf);
-    else {
-        BASED_LOG("No selector found, retrying...\n");
-        return get_service(cluster, org, project, env, name, key, optional_key);
-    }
-
-    m_selector_index++;
-    if (m_selector_index >= selectors.size()) m_selector_index = 0;
-
-    std::string selector_url = selectors.at(m_selector_index);
-    std::string req_url = selector_url + "/" + org + "." + project + "." + env + "." + name;
-    if (key.length() > 0) req_url += "." + key;
-    if (key.length() > 0 && optional_key) req_url += "$";
-
-    buf = "";
-    curl_easy_setopt(curl, CURLOPT_URL, req_url.c_str());
-
-    res = curl_easy_perform(curl);  // get service url from selected selector
-    if (res != 0) {
-        if (res == CURLE_OPERATION_TIMEDOUT) {
-            std::cerr << "operation timed out when getting service url, retrying...";
-            return get_service(cluster, org, project, env, name, key, optional_key);
-        }
-        std::cerr << "error with easy_perform, code: " << res << ", retrying..." << std::endl;
-        return get_service(cluster, org, project, env, name, key, optional_key);
-    }
-
-    curl_easy_cleanup(curl);
-
-    return buf;
+    std::string discovery_url = gen_discovery_url(opts);
+    url = make_request(discovery_url, opts);
+    return http ? "https://" + url : "wss://" + url;
 }
 
 void WsConnection::connect(std::string cluster,
@@ -152,8 +185,11 @@ void WsConnection::connect(std::string cluster,
     m_optional_key = optional_key;
 
     std::thread con_thr([&, org, project, env, cluster, key, optional_key]() {
-        std::string service_url =
-            get_service(cluster, org, project, env, "@based/edge", key, optional_key);
+        BasedConnectOpt opts = {// .cluster = 'production'
+                                .org = "saulx",
+                                .project = "test",
+                                .env = "framme"};
+        std::string service_url = discover_service(opts, false);
         connect_to_uri(service_url);
     });
     con_thr.detach();

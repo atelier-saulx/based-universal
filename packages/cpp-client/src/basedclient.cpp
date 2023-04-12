@@ -60,7 +60,12 @@ std::string BasedClient::get_service(std::string cluster,
                                      bool optional_key) {
     // TODO: This is currently blocking (no bueno), should be changed.
     // Especially for bad connections
-    std::string url = m_con.get_service(cluster, org, project, env, name, key, optional_key);
+    BasedConnectOpt opts = {// .cluster = 'production'
+                            .org = "saulx",
+                            .project = "test",
+                            .env = "framme"};
+
+    std::string url = m_con.discover_service(opts, false);
     if (url.rfind("wss://", 0) == 0) {
         url.replace(0, 3, "https");
     } else if (url.rfind("ws://", 0) == 0) {
