@@ -48,7 +48,7 @@ std::string gen_discovery_url(BasedConnectOpt opts) {
     return url;
 }
 
-std::string make_request(std::string url, BasedConnectOpt opts) {
+std::pair<std::string, std::string> make_request(std::string url, BasedConnectOpt opts) {
     CURL* curl;
     struct curl_slist* list = NULL;
     CURLcode res;
@@ -103,11 +103,13 @@ std::string make_request(std::string url, BasedConnectOpt opts) {
     auto idx = decoded_value.rfind(",");
 
     std::string access_key = Utility::encodeURIComponent(decoded_value.substr(idx + 1));
-    std::string final_url = decoded_value.substr(0, idx) + "/" + access_key;
+    std::string final_url = decoded_value.substr(0, idx);
 
     curl_easy_cleanup(curl);
 
-    return final_url;
+    std::pair<std::string, std::string> result_pair(final_url, access_key);
+
+    return result_pair;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -167,8 +169,9 @@ std::string WsConnection::discover_service(BasedConnectOpt opts, bool http) {
         return url;
     }
     std::string discovery_url = gen_discovery_url(opts);
-    url = make_request(discovery_url, opts);
-    return http ? "https://" + url : "wss://" + url;
+    auto [service_url, access_key] = make_request(discovery_url, opts);
+    url = service_url;
+    return http ? "https://" + url : "wss://" + url + "/" + access_key;
 }
 
 void WsConnection::connect(std::string cluster,
@@ -185,10 +188,16 @@ void WsConnection::connect(std::string cluster,
     m_optional_key = optional_key;
 
     std::thread con_thr([&, org, project, env, cluster, key, optional_key]() {
-        BasedConnectOpt opts = {// .cluster = 'production'
-                                .org = "saulx",
-                                .project = "test",
-                                .env = "framme"};
+        BasedConnectOpt opts = {
+            .cluster = cluster,
+            .org = org,
+            .project = project,
+            .env = env,
+            .key = key,
+            .name = "@based/env-hub",
+            .optional_key = optional_key,
+
+        };
         std::string service_url = discover_service(opts, false);
         connect_to_uri(service_url);
     });
