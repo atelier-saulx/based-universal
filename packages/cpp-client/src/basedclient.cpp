@@ -227,11 +227,9 @@ void BasedClient::unobserve(int sub_id) {
     drain_queues();
 }
 
-int BasedClient::function(std::string name,
-                          std::string payload,
-                          void (*cb)(const char* /*data*/,
-                                     const char* /*error*/,
-                                     int /*request_id*/)) {
+int BasedClient::call(std::string name,
+                      std::string payload,
+                      void (*cb)(const char* /*data*/, const char* /*error*/, int /*request_id*/)) {
     m_request_id++;
     if (m_request_id > 16777215) {
         m_request_id = 0;

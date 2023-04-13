@@ -189,9 +189,9 @@ class BasedClient {
      *
      * @return The sub_id that will also be passed in the callback.
      */
-    int function(std::string name,
-                 std::string payload,
-                 void (*cb)(const char* /*data*/, const char* /*error*/, int /*sub_id*/));
+    int call(std::string name,
+             std::string payload,
+             void (*cb)(const char* /*data*/, const char* /*error*/, int /*sub_id*/));
 
     /**
      * @brief Set a auth state.

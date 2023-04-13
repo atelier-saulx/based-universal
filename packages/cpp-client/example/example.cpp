@@ -104,7 +104,7 @@ int main(int argc, char** argv) {
             char* f = &*name.begin();
             char* p = &*payload.begin();
             std::cout << "--> Call '" << name << "', payload = \"" << payload << "\"" << std::endl;
-            Based__function(client1, f, p, &based_cb);
+            Based__call(client1, f, p, &based_cb);
 
         } else if (cmd.substr(0, 1) == "r") {
             int rem_id = atoi(cmd.substr(2).c_str());
