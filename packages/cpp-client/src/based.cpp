@@ -129,11 +129,11 @@ extern "C" int Based__call(based_id client_id,
     return cl->call(name, payload, cb);
 }
 
-extern "C" void Based__auth(based_id client_id, char* state, void (*cb)(const char*)) {
+extern "C" void Based__set_auth_state(based_id client_id, char* state, void (*cb)(const char*)) {
     if (clients.find(client_id) == clients.end()) {
         std::cerr << "No such id found" << std::endl;
         return;
     }
     auto cl = clients.at(client_id);
-    cl->auth(state, cb);
+    cl->set_auth_state(state, cb);
 }

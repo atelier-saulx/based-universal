@@ -243,7 +243,7 @@ int BasedClient::call(std::string name,
     return m_request_id;
 }
 
-void BasedClient::auth(std::string state, void (*cb)(const char*)) {
+void BasedClient::set_auth_state(std::string state, void (*cb)(const char*)) {
     if (m_auth_in_progress) return;
 
     m_auth_request_state = state;

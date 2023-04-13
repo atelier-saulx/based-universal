@@ -199,7 +199,7 @@ class BasedClient {
      * @param state Any object, usually the token
      * @param cb This callback will fire with either be "true" or the auth state itself.
      */
-    void auth(std::string state, void (*cb)(const char*));
+    void set_auth_state(std::string state, void (*cb)(const char*));
 
    private:
     /**

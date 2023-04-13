@@ -58,8 +58,8 @@ extern "C" int Based__call(based_id client_id,
                                       const char* /* Error */,
                                       int /*request_id*/));
 
-extern "C" void Based__auth(based_id client_id,
-                            char* state,
-                            void (*cb)(const char* /* Auth response */));
+extern "C" void Based__set_auth_state(based_id client_id,
+                                      char* state,
+                                      void (*cb)(const char* /* Auth response */));
 
 #endif
