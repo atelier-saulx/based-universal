@@ -72,12 +72,9 @@ class WsConnection {
     int m_reconnect_attempts;
     int m_selector_index;
 
-    std::string m_cluster;
-    std::string m_org;
-    std::string m_project;
-    std::string m_env;
-    std::string m_key;
-    bool m_optional_key;
+    BasedConnectOpt m_opts;
+
+    std::pair<std::string, std::string> make_request(std::string url, BasedConnectOpt opts);
 };
 
 #endif

@@ -341,7 +341,8 @@ void BasedClient::on_message(std::string message) {
     int32_t len = Utility::get_payload_len(header);
     int32_t is_deflate = Utility::get_payload_is_deflate(header);
 
-    BASED_LOG(">> Incoming message: type = %d, len = %d, is_deflate = %d", type, len, is_deflate);
+    // BASED_LOG(">> Incoming message: type = %d, len = %d, is_deflate = %d", type, len,
+    // is_deflate);
 
     switch (type) {
         case IncomingType::FUNCTION_DATA: {
@@ -376,8 +377,8 @@ void BasedClient::on_message(std::string message) {
                                      : message.substr(start, end);
             }
 
-            BASED_LOG("1>> Incoming message: obs_id = %d, checksum = %d, payload = %s", obs_id,
-                      checksum, payload.c_str());
+            // BASED_LOG("1>> Incoming message: obs_id = %d, checksum = %d, payload = %s", obs_id,
+            //           checksum, payload.c_str());
 
             m_cache[obs_id].first = payload;
             m_cache[obs_id].second = checksum;
@@ -435,8 +436,8 @@ void BasedClient::on_message(std::string message) {
                 m_cache[obs_id].second = checksum;
             }
 
-            BASED_LOG("2>> Incoming message: obs_id = %d, checksum = %d, patched_payload = %s",
-                      obs_id, checksum, patched_payload.c_str());
+            // BASED_LOG("2>> Incoming message: obs_id = %d, checksum = %d, patched_payload = %s",
+            //           obs_id, checksum, patched_payload.c_str());
 
             if (m_observe_subs.find(obs_id) != m_observe_subs.end()) {
                 for (auto sub_id : m_observe_subs.at(obs_id)) {

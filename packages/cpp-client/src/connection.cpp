@@ -12,7 +12,7 @@ using json = nlohmann::json;
 //////////////// Helper functions /////////////////
 ///////////////////////////////////////////////////
 
-static size_t write_function(void* contents, size_t size, size_t nmemb, void* userp) {
+size_t write_function(void* contents, size_t size, size_t nmemb, void* userp) {
     ((std::string*)userp)->append((char*)contents, size * nmemb);
     return size * nmemb;
 }
@@ -48,7 +48,13 @@ std::string gen_discovery_url(BasedConnectOpt opts) {
     return url;
 }
 
-std::pair<std::string, std::string> make_request(std::string url, BasedConnectOpt opts) {
+std::pair<std::string, std::string> WsConnection::make_request(std::string url,
+                                                               BasedConnectOpt opts) {
+    int timeout = m_reconnect_attempts > 15 ? 1500 : m_reconnect_attempts * 100;
+    if (m_reconnect_attempts > 0) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(timeout));
+    }
+
     CURL* curl;
     struct curl_slist* list = NULL;
     CURLcode res;
@@ -91,8 +97,12 @@ std::pair<std::string, std::string> make_request(std::string url, BasedConnectOp
     res = curl_easy_perform(curl);
 
     if (res != CURLE_OK) {
-        fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+        fprintf(stderr, "curl_easy_perform() failed: %s, trying again...\n",
+                curl_easy_strerror(res));
+        m_reconnect_attempts++;
+        return make_request(url, opts);
     }
+    m_reconnect_attempts = 0;
 
     auto header_value = Utility::split_string(request_id_header, ": ")[1];
     auto encode_chars = Utility::split_string(header_value.substr(0, 6), "");
@@ -121,13 +131,7 @@ WsConnection::WsConnection()
       m_on_open(NULL),
       m_on_message(NULL),
       m_reconnect_attempts(0),
-      m_selector_index(0),
-      m_cluster(""),
-      m_org(""),
-      m_project(""),
-      m_env(""),
-      m_key(""),
-      m_optional_key(false) {
+      m_selector_index(0) {
     // set the endpoint logging behavior to silent by clearing all of the access and error
     // logging channels
     m_endpoint.clear_access_channels(websocketpp::log::alevel::all);
@@ -145,9 +149,8 @@ WsConnection::WsConnection()
     // perpetual mode = the endpoint's processing loop will not exit automatically when it has
     // no connections
     m_endpoint.start_perpetual();
-    // // run perpetually in a thread
+    // run perpetually in a thread
 
-    // std::make_shared<std::thread>(&ws_client::run, m_endpoint);
     m_thread = std::make_shared<std::thread>(&ws_client::run, &m_endpoint);
 };
 
@@ -180,32 +183,22 @@ void WsConnection::connect(std::string cluster,
                            std::string env,
                            std::string key,
                            bool optional_key) {
-    m_cluster = cluster;
-    m_org = org;
-    m_project = project;
-    m_env = env;
-    m_key = key;
-    m_optional_key = optional_key;
+    m_opts.cluster = cluster;
+    m_opts.org = org;
+    m_opts.project = project;
+    m_opts.env = env;
+    m_opts.name = "@based/env-hub";
+    m_opts.key = key;
+    m_opts.optional_key = optional_key;
 
     std::thread con_thr([&, org, project, env, cluster, key, optional_key]() {
-        BasedConnectOpt opts = {
-            .cluster = cluster,
-            .org = org,
-            .project = project,
-            .env = env,
-            .key = key,
-            .name = "@based/env-hub",
-            .optional_key = optional_key,
-
-        };
-        std::string service_url = discover_service(opts, false);
+        std::string service_url = discover_service(m_opts, false);
         connect_to_uri(service_url);
     });
     con_thr.detach();
 }
 
 void WsConnection::connect_to_uri(std::string uri) {
-    // std::async(std::launch::async, [&]() {
     // maximum timeout between attempts, in ms
     int timeout = m_reconnect_attempts > 15 ? 1500 : m_reconnect_attempts * 100;
     if (m_reconnect_attempts > 0) {
@@ -237,7 +230,6 @@ void WsConnection::connect_to_uri(std::string uri) {
     BASED_LOG("Connection created");
 
     return;
-    // });
 };
 
 void WsConnection::set_open_handler(std::function<void()> on_open) {
@@ -348,8 +340,9 @@ void WsConnection::set_handlers(ws_client::connection_ptr con) {
             m_status = ConnectionStatus::CLOSED;
             m_reconnect_attempts++;
 
-            if (!m_cluster.empty()) {
-                connect(m_cluster, m_org, m_project, m_env, m_key, m_optional_key);
+            if (!m_opts.name.empty()) {
+                connect(m_opts.cluster, m_opts.org, m_opts.project, m_opts.env, m_opts.key,
+                        m_opts.optional_key);
             } else {
                 connect_to_uri(m_uri);
             }
@@ -361,8 +354,9 @@ void WsConnection::set_handlers(ws_client::connection_ptr con) {
         m_status = ConnectionStatus::FAILED;
         m_reconnect_attempts++;
 
-        if (!m_cluster.empty()) {
-            connect(m_cluster, m_org, m_project, m_env, m_key, m_optional_key);
+        if (!m_opts.name.empty()) {
+            connect(m_opts.cluster, m_opts.org, m_opts.project, m_opts.env, m_opts.key,
+                    m_opts.optional_key);
         } else {
             connect_to_uri(m_uri);
         }
