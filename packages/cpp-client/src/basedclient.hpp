@@ -9,12 +9,14 @@
 #include <vector>
 
 #include "connection.hpp"
+#include "utility.hpp"
 
-struct Observable;
+struct Observable {
+    Observable(std::string name, std::string payload) : name(name), payload(payload){};
 
-/////////////////
-// Forward declarations
-/////////////////
+    std::string name;
+    std::string payload;
+};
 
 class BasedClient {
    private:
@@ -28,7 +30,7 @@ class BasedClient {
     std::string m_auth_request_state;
 
     void (*m_auth_callback)(const char*);
-    std::map<int, void (*)(const char*, const char*, int)> m_function_callbacks;
+    std::map<int, void (*)(const char*, const char*, int)> m_call_callbacks;
 
     /////////////////////
     // cache
@@ -37,7 +39,7 @@ class BasedClient {
     /**
      * map<obs_id, <value, checksum>>
      */
-    std::map<int, std::pair<std::string, uint64_t>> m_cache;
+    std::map<obs_id_t, std::pair<std::string, checksum_t>> m_cache;
 
     /////////////////////
     // queues
@@ -47,6 +49,9 @@ class BasedClient {
     std::vector<std::vector<uint8_t>> m_function_queue;
     std::vector<std::vector<uint8_t>> m_unobserve_queue;
     std::vector<std::vector<uint8_t>> m_get_queue;
+    std::vector<std::vector<uint8_t>> m_channel_sub_queue;
+    std::vector<std::vector<uint8_t>> m_channel_unsub_queue;
+    std::vector<std::vector<uint8_t>> m_channel_publish_queue;
     std::vector<uint8_t> m_auth_queue;
 
     /////////////////////
@@ -58,14 +63,14 @@ class BasedClient {
      * The list of all the active observables. These should only be deleted when
      * there are no active subs for it. It's used in the event of a reconnection.
      */
-    std::map<int, Observable*> m_observe_requests;
+    std::map<int, Observable*> m_active_observables;
 
     /**
      * map<obs_hash, list of sub_ids>
-     * The list of subsribers to the observable. These are tied to a on_data function
-     * and an optional on_error function, which should be fired appropriately.
+     * The list of subscribers to the observable. These are tied to a on_data function, which should
+     * be fired appropriately.
      */
-    std::map<int, std::set<int>> m_observe_subs;
+    std::map<int, std::set<int>> m_obs_to_subs;
 
     /**
      * <sub_id, obs_hash>
@@ -80,6 +85,36 @@ class BasedClient {
     std::map<int, void (*)(const char*, uint64_t, const char*, int)> m_sub_callback;
 
     ////////////////
+    // channels
+    ////////////////
+
+    /**
+     * map<obs_hash, Observable object>
+     * The list of all the active observables. These should only be deleted when
+     * there are no active subs for it. It's used in the event of a reconnection.
+     */
+    std::map<obs_id_t, Observable*> m_active_channels;
+
+    /**
+     * map<obs_hash, list of sub_ids>
+     * The list of subscribers to the observable. These are tied to a on_data function, which should
+     * be fired appropriately.
+     */
+    std::map<obs_id_t, std::set<int>> m_channel_to_subs;
+
+    /**
+     * <sub_id, obs_id>
+     *  Mapping of which observable a sub_id refers to. Necessary for .unobserve.
+     */
+    std::map<int, obs_id_t> m_sub_to_channel;
+
+    /**
+     * map<sub_id, on_data callback>
+     * List of on_data callback to call when receiving the data.
+     */
+    std::map<int, void (*)(const char*, const char*, int)> m_channel_callback;
+
+    ////////////////
     // gets
     ////////////////
 
@@ -88,7 +123,7 @@ class BasedClient {
      * The list of getters to the observable. These should be fired once, when receiving
      * the sub data, and immediatly cleaned up.
      */
-    std::map<int, std::set<int>> m_get_subs;
+    std::map<int, std::set<int>> m_obs_to_gets;
 
     /**
      * map<sub_id, on_data callback>
@@ -112,13 +147,14 @@ class BasedClient {
      * case the named one is not found
      * @return std::string of the url
      */
-    std::string get_service(std::string cluster,
-                            std::string org,
-                            std::string project,
-                            std::string env,
-                            std::string name,
-                            std::string key,
-                            bool optional_key);
+    std::string discover_service(std::string cluster,
+                                 std::string org,
+                                 std::string project,
+                                 std::string env,
+                                 std::string name,
+                                 std::string key,
+                                 bool optional_key,
+                                 bool html);
 
     /**
      * @brief Connect directly to a websocket url.
@@ -200,6 +236,14 @@ class BasedClient {
      * @param cb This callback will fire with either be "true" or the auth state itself.
      */
     void set_auth_state(std::string state, void (*cb)(const char*));
+
+    int channel_subscribe(std::string name,
+                          std::string payload,
+                          void (*cb)(const char* /*data*/, const char* /*error*/, int /*sub_id*/));
+
+    void channel_unsubscribe(int sub_id);
+
+    void channel_publish(std::string name, std::string payload, std::string message);
 
    private:
     /**

@@ -37,8 +37,10 @@ void based_observe_cb(const char* data, uint64_t checksum, const char* error, in
 int main(int argc, char** argv) {
     int client1 = Based__new_client();
 
-    Based__connect(client1, (char*)"", (char*)"saulx", (char*)"test", (char*)"framme", (char*)"",
-                   (char*)"", false);
+    // Based__connect(client1, (char*)"", (char*)"saulx", (char*)"test", (char*)"framme", (char*)"",
+    //                (char*)"", false);
+
+    Based__connect_to_url(client1, (char*)"ws://localhost:9999");
 
     bool done = false;
     std::string cmd;
@@ -106,6 +108,23 @@ int main(int argc, char** argv) {
             std::cout << "--> Call '" << name << "', payload = \"" << payload << "\"" << std::endl;
             Based__call(client1, f, p, &based_cb);
 
+        } else if (cmd.substr(0, 6) == "ch_sub") {
+            cmd.erase(0, 7);
+            auto idx = cmd.find(" ");
+            auto name = cmd.substr(0, idx);
+            cmd.erase(0, idx + 1);
+            std::string payload;
+            if (idx == std::string::npos) {
+                payload = "";
+            } else {
+                payload = cmd;
+            }
+
+            char* f = &*name.begin();
+            char* p = &*payload.begin();
+            std::cout << "--> Channel subscribe '" << name << "', payload = \"" << payload << "\""
+                      << std::endl;
+            Based__channel_subscribe(client1, f, p, &based_cb);
         } else if (cmd.substr(0, 1) == "r") {
             int rem_id = atoi(cmd.substr(2).c_str());
             Based__unobserve(client1, rem_id);

@@ -184,7 +184,7 @@ std::vector<uint8_t> Utility::encode_function_message(int32_t id,
     int32_t is_deflate = 0;
 
     std::string p;
-    if (payload.length() > 0) {
+    if (!payload.empty()) {
         if (payload.length() > 150) {
             is_deflate = 1;
             p = deflate_string(payload);
@@ -239,7 +239,7 @@ std::vector<uint8_t> Utility::encode_observe_message(uint32_t id,
     int32_t is_deflate = 0;
 
     std::string p;
-    if (payload.length() > 0) {
+    if (!payload.empty()) {
         if (payload.length() > 150) {
             is_deflate = 1;
             p = deflate_string(payload);
@@ -295,7 +295,7 @@ std::vector<uint8_t> Utility::encode_get_message(uint64_t id,
     int32_t is_deflate = 0;
 
     std::string p;
-    if (payload.length() > 0) {
+    if (!payload.empty()) {
         if (payload.length() > 150) {
             is_deflate = 1;
             p = deflate_string(payload);
@@ -317,6 +317,74 @@ std::vector<uint8_t> Utility::encode_get_message(uint64_t id,
     return buff;
 }
 
+std::vector<uint8_t> Utility::encode_subscribe_channel_message(obs_id_t id,
+                                                               std::string name,
+                                                               std::string& payload,
+                                                               bool is_request_subscriber) {
+    // Type 5 = subscribe
+    // | 4 header | 8 id | 1 name length | * name | * payload |
+
+    std::vector<uint8_t> buff;
+
+    /**
+     * Length in bytes. 4 B header + 8 B id + 8 B checksum,
+     * add the rest later based on payload and name.
+     */
+    int32_t len = 4;
+    len += 1 + name.length();
+
+    int32_t is_deflate = is_request_subscriber ? 1 : 0;
+
+    if (!payload.empty()) {
+        // do not deflate
+        len += payload.length();
+    }
+
+    len += 8;
+
+    append_header(buff, 5, is_deflate, len);
+    append_bytes(buff, id, 8);
+    buff.push_back(name.length());
+    append_string(buff, name);
+
+    if (!payload.empty()) {
+        append_string(buff, payload);
+    }
+
+    return buff;
+}
+
+std::vector<uint8_t> Utility::encode_publish_channel_message(obs_id_t id, std::string& payload) {
+    // | 4 header | 8 id | * payload |
+
+    std::vector<uint8_t> buff;
+
+    int32_t len = 12;
+
+    int32_t is_deflate = 0;
+
+    std::string p;
+    if (!payload.empty()) {
+        if (payload.length() > 150) {
+            is_deflate = 1;
+            p = deflate_string(payload);
+        } else {
+            p = payload;
+        }
+
+        len += p.length();
+    }
+
+    append_header(buff, 6, is_deflate, len);
+    append_bytes(buff, id, 8);
+
+    if (!p.empty()) {
+        append_string(buff, p);
+    }
+
+    return buff;
+}
+
 std::vector<uint8_t> Utility::encode_auth_message(std::string& auth_state) {
     // Type 4 = auth
     // | 4 header | * payload
@@ -331,7 +399,7 @@ std::vector<uint8_t> Utility::encode_auth_message(std::string& auth_state) {
     int32_t is_deflate = 0;
 
     std::string p;
-    if (auth_state.length() > 0) {
+    if (!auth_state.empty()) {
         if (auth_state.length() > 150) {
             is_deflate = 1;
             p = deflate_string(auth_state);
@@ -343,7 +411,7 @@ std::vector<uint8_t> Utility::encode_auth_message(std::string& auth_state) {
     }
     append_header(buff, 4, is_deflate, len);
     // append_bytes(buff, p.length, )
-    if (p.length() > 0) {
+    if (!p.empty()) {
         append_string(buff, p);
     }
 

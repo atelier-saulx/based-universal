@@ -15,35 +15,31 @@ enum IncomingType {
     SUBSCRIPTION_DIFF_DATA = 2,
     GET_DATA = 3,
     AUTH_DATA = 4,
-    ERROR_DATA = 5
+    ERROR_DATA = 5,
+    CHANNEL_REPUBLISH = 6,
+    CHANNEL_MESSAGE = 7,
 };
 
-struct Observable {
-    Observable(std::string name, std::string payload) : name(name), payload(payload){};
-
-    std::string name;
-    std::string payload;
-};
 BasedClient::BasedClient() : m_request_id(0), m_sub_id(0), m_auth_in_progress(false){};
 
 /////////////////
 // Helper functions
 /////////////////
 
-inline uint32_t make_obs_id(std::string& name, std::string& payload) {
-    if (payload.length() == 0) {
-        uint32_t payload_hash = (uint32_t)std::hash<json>{}("");
-        uint32_t name_hash = (uint32_t)std::hash<std::string>{}(name);
+inline obs_id_t make_obs_id(std::string& name, std::string& payload) {
+    if (payload.empty()) {
+        obs_id_t payload_hash = (obs_id_t)std::hash<json>{}("");
+        obs_id_t name_hash = (obs_id_t)std::hash<std::string>{}(name);
 
-        uint32_t obs_id = (payload_hash * 33) ^ name_hash;
+        obs_id_t obs_id = (payload_hash * 33) ^ name_hash;
 
         return obs_id;
     }
     json p = json::parse(payload);
-    uint32_t payload_hash = (uint32_t)std::hash<json>{}(p);
-    uint32_t name_hash = (uint32_t)std::hash<std::string>{}(name);
+    obs_id_t payload_hash = (obs_id_t)std::hash<json>{}(p);
+    obs_id_t name_hash = (obs_id_t)std::hash<std::string>{}(name);
 
-    uint32_t obs_id = (payload_hash * 33) ^ name_hash;
+    obs_id_t obs_id = (payload_hash * 33) ^ name_hash;
     return obs_id;
 }
 
@@ -51,26 +47,68 @@ inline uint32_t make_obs_id(std::string& name, std::string& payload) {
 ///////////////////////// Client methods /////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-std::string BasedClient::get_service(std::string cluster,
-                                     std::string org,
-                                     std::string project,
-                                     std::string env,
-                                     std::string name,
-                                     std::string key,
-                                     bool optional_key) {
+int BasedClient::channel_subscribe(std::string name,
+                                   std::string payload,
+                                   void (*cb)(const char* /*data*/,
+                                              const char* /*error*/,
+                                              int /*sub_id*/)) {
+    auto obs_id = make_obs_id(name, payload);
+    auto sub_id = m_sub_id++;
+
+    if (m_active_channels.find(obs_id) == m_active_channels.end()) {
+        // first time this channel is observed
+
+        std::vector<uint8_t> msg =
+            Utility::encode_subscribe_channel_message(obs_id, name, payload, false);
+
+        m_channel_sub_queue.push_back(msg);
+
+        m_active_channels[obs_id] = new Observable(name, payload);
+
+        m_channel_to_subs[obs_id] = std::set<int>{sub_id};
+
+        m_sub_to_channel[sub_id] = obs_id;
+
+        m_channel_callback[sub_id] = cb;
+    } else {
+        // this query has already been requested once, only add subscriber,
+        // dont send a new request.
+
+        m_channel_to_subs.at(obs_id).insert(sub_id);
+
+        m_sub_to_channel[sub_id] = obs_id;
+
+        m_channel_callback[sub_id] = cb;
+    }
+
+    drain_queues();
+}
+
+void BasedClient::channel_unsubscribe(int sub_id) {}
+
+void BasedClient::channel_publish(std::string name, std::string payload, std::string message) {}
+
+std::string BasedClient::discover_service(std::string cluster,
+                                          std::string org,
+                                          std::string project,
+                                          std::string env,
+                                          std::string name,
+                                          std::string key,
+                                          bool optional_key,
+                                          bool html) {
     // TODO: This is currently blocking (no bueno), should be changed.
     // Especially for bad connections
-    BasedConnectOpt opts = {// .cluster = 'production'
-                            .org = "saulx",
-                            .project = "test",
-                            .env = "framme"};
+    BasedConnectOpt opts = {
+        .cluster = cluster,
+        .org = org,
+        .project = project,
+        .env = env,
+        .name = name.empty() ? "@based/env-hub" : name,
+        .key = key,
+        .optional_key = optional_key,
+    };
 
-    std::string url = m_con.discover_service(opts, false);
-    if (url.rfind("wss://", 0) == 0) {
-        url.replace(0, 3, "https");
-    } else if (url.rfind("ws://", 0) == 0) {
-        url.replace(0, 2, "http");
-    }
+    std::string url = m_con.discover_service(opts, html);
     return url;
 }
 
@@ -116,13 +154,13 @@ int BasedClient::observe(std::string name,
      * and the unobserve request should be queued, to let the server know.
      */
 
-    uint32_t obs_id = make_obs_id(name, payload);
-    int32_t sub_id = m_sub_id++;
+    auto obs_id = make_obs_id(name, payload);
+    auto sub_id = m_sub_id++;
 
-    if (m_observe_requests.find(obs_id) == m_observe_requests.end()) {
+    if (m_active_observables.find(obs_id) == m_active_observables.end()) {
         // first time this query is observed
         // encode request
-        uint64_t checksum = 0;
+        checksum_t checksum = 0;
 
         if (m_cache.find(obs_id) != m_cache.end()) {
             // if cache for this obs exists
@@ -135,10 +173,10 @@ int BasedClient::observe(std::string name,
         m_observe_queue.push_back(msg);
 
         // add encoded request to map of observables
-        m_observe_requests[obs_id] = new Observable(name, payload);
+        m_active_observables[obs_id] = new Observable(name, payload);
 
         // add subscriber to list of subs for this observable
-        m_observe_subs[obs_id] = std::set<int>{sub_id};
+        m_obs_to_subs[obs_id] = std::set<int>{sub_id};
 
         // record what obs this sub is for, to delete it later
         m_sub_to_obs[sub_id] = obs_id;
@@ -152,14 +190,13 @@ int BasedClient::observe(std::string name,
         // dont send a new request.
 
         // add subscriber to that observable
-        m_observe_subs.at(obs_id).insert(sub_id);
+        m_obs_to_subs.at(obs_id).insert(sub_id);
 
         // record what obs this sub is for, to delete it later
         m_sub_to_obs[sub_id] = obs_id;
 
         // add cb for this new sub
         m_sub_callback[sub_id] = cb;
-        // TODO: add on_error for this new sub if it exists
     }
 
     drain_queues();
@@ -170,19 +207,19 @@ int BasedClient::observe(std::string name,
 int BasedClient::get(std::string name,
                      std::string payload,
                      void (*cb)(const char* /*data*/, const char* /*error*/, int /*sub_id*/)) {
-    uint32_t obs_id = make_obs_id(name, payload);
+    auto obs_id = make_obs_id(name, payload);
     int32_t sub_id = m_sub_id++;
 
     // if obs_id exists in get_subs, add new sub to list
-    if (m_get_subs.find(obs_id) != m_get_subs.end()) {
-        m_get_subs.at(obs_id).insert(sub_id);
+    if (m_obs_to_gets.find(obs_id) != m_obs_to_gets.end()) {
+        m_obs_to_gets.at(obs_id).insert(sub_id);
     } else {  // else create it and then add it
-        m_get_subs[obs_id] = std::set<int>{sub_id};
+        m_obs_to_gets[obs_id] = std::set<int>{sub_id};
     }
     m_get_sub_callbacks[sub_id] = cb;
     // is there an active obs? if so, do nothing (get will trigger on next update)
     // if there isnt, queue request
-    if (m_observe_requests.find(obs_id) == m_observe_requests.end()) {
+    if (m_active_observables.find(obs_id) == m_active_observables.end()) {
         uint64_t checksum = 0;
 
         if (m_cache.find(obs_id) != m_cache.end()) {
@@ -205,7 +242,7 @@ void BasedClient::unobserve(int sub_id) {
     auto obs_id = m_sub_to_obs.at(sub_id);
 
     // remove sub from list of subs for that observable
-    m_observe_subs.at(obs_id).erase(sub_id);
+    m_obs_to_subs.at(obs_id).erase(sub_id);
 
     // remove on_data callback
     m_sub_callback.erase(sub_id);
@@ -214,15 +251,15 @@ void BasedClient::unobserve(int sub_id) {
     m_sub_to_obs.erase(sub_id);
 
     // if the list is now empty, add request to unobserve to queue
-    if (m_observe_subs.at(obs_id).empty()) {
+    if (m_obs_to_subs.at(obs_id).empty()) {
         BASED_LOG("Unobserve request queued for obs_id %d", obs_id);
         std::vector<uint8_t> msg = Utility::encode_unobserve_message(obs_id);
         m_unobserve_queue.push_back(msg);
         // and remove the obs from the map of active ones.
-        delete m_observe_requests.at(obs_id);
-        m_observe_requests.erase(obs_id);
+        delete m_active_observables.at(obs_id);
+        m_active_observables.erase(obs_id);
         // and the vector of listeners, since it's now empty we can free the memory
-        m_observe_subs.erase(obs_id);
+        m_obs_to_subs.erase(obs_id);
     }
     drain_queues();
 }
@@ -235,7 +272,7 @@ int BasedClient::call(std::string name,
         m_request_id = 0;
     }
     int id = m_request_id;
-    m_function_callbacks[id] = cb;
+    m_call_callbacks[id] = cb;
     // encode the message
     std::vector<uint8_t> msg = Utility::encode_function_message(id, name, payload);
     m_function_queue.push_back(msg);
@@ -266,40 +303,47 @@ void BasedClient::drain_queues() {
 
     std::vector<uint8_t> buff;
 
-    if (m_auth_queue.size() > 0) {
+    if (!m_auth_queue.empty()) {
         buff.insert(buff.end(), m_auth_queue.begin(), m_auth_queue.end());
         m_auth_queue.clear();
     }
 
-    if (m_observe_queue.size() > 0) {
+    if (!m_channel_sub_queue.empty()) {
+        for (auto msg : m_channel_sub_queue) {
+            buff.insert(buff.end(), msg.begin(), msg.end());
+        }
+        m_channel_sub_queue.clear();
+    }
+
+    if (!m_observe_queue.empty()) {
         for (auto msg : m_observe_queue) {
             buff.insert(buff.end(), msg.begin(), msg.end());
         }
         m_observe_queue.clear();
     }
 
-    if (m_unobserve_queue.size() > 0) {
+    if (!m_unobserve_queue.empty()) {
         for (auto msg : m_unobserve_queue) {
             buff.insert(buff.end(), msg.begin(), msg.end());
         }
         m_unobserve_queue.clear();
     }
 
-    if (m_function_queue.size() > 0) {
+    if (!m_function_queue.empty()) {
         for (auto msg : m_function_queue) {
             buff.insert(buff.end(), msg.begin(), msg.end());
         }
         m_function_queue.clear();
     }
 
-    if (m_get_queue.size() > 0) {
+    if (!m_get_queue.empty()) {
         for (auto msg : m_get_queue) {
             buff.insert(buff.end(), msg.begin(), msg.end());
         }
         m_get_queue.clear();
     }
 
-    if (buff.size() > 0) {
+    if (!buff.empty()) {
         if (m_con.status() == ConnectionStatus::OPEN) {
             m_con.send(buff);
         }
@@ -307,10 +351,10 @@ void BasedClient::drain_queues() {
 }
 
 void BasedClient::request_full_data(uint64_t obs_id) {
-    if (m_observe_requests.find(obs_id) == m_observe_requests.end()) {
+    if (m_active_observables.find(obs_id) == m_active_observables.end()) {
         return;
     }
-    auto obs = m_observe_requests.at(obs_id);
+    auto obs = m_active_observables.at(obs_id);
     auto msg = Utility::encode_observe_message(obs_id, obs->name, obs->payload, 0);
     m_observe_queue.push_back(msg);
     drain_queues();
@@ -321,7 +365,7 @@ void BasedClient::on_open() {
     //       either change the checksum in the encoded request (harder probs) or
     //       just encode it on drain queue rather than on .observe,
     //       changing the data structure a bit
-    for (auto el : m_observe_requests) {
+    for (auto el : m_active_observables) {
         Observable* obs = el.second;
         auto msg = Utility::encode_observe_message(el.first, obs->name, obs->payload, 0);
         m_observe_queue.push_back(msg);
@@ -344,10 +388,11 @@ void BasedClient::on_message(std::string message) {
 
     switch (type) {
         case IncomingType::FUNCTION_DATA: {
+            BASED_LOG("Received FUNCTION_DATA message");
             int id = Utility::read_bytes_from_string(message, 4, 3);
 
-            if (m_function_callbacks.find(id) != m_function_callbacks.end()) {
-                auto fn = m_function_callbacks.at(id);
+            if (m_call_callbacks.find(id) != m_call_callbacks.end()) {
+                auto fn = m_call_callbacks.at(id);
                 if (len != 3) {
                     int start = 7;
                     int end = len + 4;
@@ -359,11 +404,12 @@ void BasedClient::on_message(std::string message) {
                     fn("", "", id);
                 }
                 // Listener has fired, remove it from the map.
-                m_function_callbacks.erase(id);
+                m_call_callbacks.erase(id);
             }
         }
             return;
         case IncomingType::SUBSCRIPTION_DATA: {
+            BASED_LOG("Received SUBSCRIPTION_DATA message");
             uint32_t obs_id = Utility::read_bytes_from_string(message, 4, 8);
             uint64_t checksum = Utility::read_bytes_from_string(message, 12, 8);
 
@@ -381,24 +427,25 @@ void BasedClient::on_message(std::string message) {
             m_cache[obs_id].first = payload;
             m_cache[obs_id].second = checksum;
 
-            if (m_observe_subs.find(obs_id) != m_observe_subs.end()) {
-                for (auto sub_id : m_observe_subs.at(obs_id)) {
+            if (m_obs_to_subs.find(obs_id) != m_obs_to_subs.end()) {
+                for (auto sub_id : m_obs_to_subs.at(obs_id)) {
                     auto fn = m_sub_callback.at(sub_id);
                     fn(payload.c_str(), checksum, "", sub_id);
                 }
             }
 
-            if (m_get_subs.find(obs_id) != m_get_subs.end()) {
-                for (auto sub_id : m_get_subs.at(obs_id)) {
+            if (m_obs_to_gets.find(obs_id) != m_obs_to_gets.end()) {
+                for (auto sub_id : m_obs_to_gets.at(obs_id)) {
                     auto fn = m_get_sub_callbacks.at(sub_id);
                     fn(payload.c_str(), "", sub_id);
                     m_get_sub_callbacks.erase(sub_id);
                 }
-                m_get_subs.at(obs_id).clear();
+                m_obs_to_gets.at(obs_id).clear();
             }
         }
             return;
         case IncomingType::SUBSCRIPTION_DIFF_DATA: {
+            BASED_LOG("Received SUBSCRIPTION_DIFF_DATA message");
             uint32_t obs_id = Utility::read_bytes_from_string(message, 4, 8);
             uint64_t checksum = Utility::read_bytes_from_string(message, 12, 8);
             uint64_t prev_checksum = Utility::read_bytes_from_string(message, 20, 8);
@@ -424,7 +471,7 @@ void BasedClient::on_message(std::string message) {
 
             std::string patched_payload = "";
 
-            if (patch.length() > 0) {
+            if (!patch.empty()) {
                 json value = json::parse(m_cache.at(obs_id).first);
                 json patch_json = json::parse(patch);
                 json res = Diff::apply_patch(value, patch_json);
@@ -437,36 +484,38 @@ void BasedClient::on_message(std::string message) {
             // BASED_LOG("2>> Incoming message: obs_id = %d, checksum = %d, patched_payload = %s",
             //           obs_id, checksum, patched_payload.c_str());
 
-            if (m_observe_subs.find(obs_id) != m_observe_subs.end()) {
-                for (auto sub_id : m_observe_subs.at(obs_id)) {
+            if (m_obs_to_subs.find(obs_id) != m_obs_to_subs.end()) {
+                for (auto sub_id : m_obs_to_subs.at(obs_id)) {
                     auto fn = m_sub_callback.at(sub_id);
                     fn(patched_payload.c_str(), checksum, "", sub_id);
                 }
             }
 
-            if (m_get_subs.find(obs_id) != m_get_subs.end()) {
-                for (auto sub_id : m_get_subs.at(obs_id)) {
+            if (m_obs_to_gets.find(obs_id) != m_obs_to_gets.end()) {
+                for (auto sub_id : m_obs_to_gets.at(obs_id)) {
                     auto fn = m_get_sub_callbacks.at(sub_id);
                     fn(patched_payload.c_str(), "", sub_id);
                     m_get_sub_callbacks.erase(sub_id);
                 }
-                m_get_subs.at(obs_id).clear();
+                m_obs_to_gets.at(obs_id).clear();
             }
 
         } break;
         case IncomingType::GET_DATA: {
+            BASED_LOG("Received GET_DATA message");
             uint64_t obs_id = Utility::read_bytes_from_string(message, 4, 8);
-            if (m_get_subs.find(obs_id) != m_get_subs.end() &&
+            if (m_obs_to_gets.find(obs_id) != m_obs_to_gets.end() &&
                 m_cache.find(obs_id) != m_cache.end()) {
-                for (auto sub_id : m_get_subs.at(obs_id)) {
+                for (auto sub_id : m_obs_to_gets.at(obs_id)) {
                     auto fn = m_get_sub_callbacks.at(sub_id);
                     fn(m_cache.at(obs_id).first.c_str(), "", obs_id);
                     m_get_sub_callbacks.erase(sub_id);
                 }
-                m_get_subs.at(obs_id).clear();
+                m_obs_to_gets.at(obs_id).clear();
             }
         } break;
         case IncomingType::AUTH_DATA: {
+            BASED_LOG("Received AUTH_DATA message");
             int32_t start = 4;
             int32_t end = len + 4;
             std::string payload = "";
@@ -499,51 +548,76 @@ void BasedClient::on_message(std::string message) {
             }
 
             json error = json::parse(payload);
+            // BASED_LOG("Received ERROR_DATA message: \n%s");
             // fire once
             if (error.find("requestId") != error.end()) {
                 auto id = error.at("requestId");
                 // std::cout << "id = " << id << std::endl;
 
-                if (m_function_callbacks.find(id) != m_function_callbacks.end()) {
-                    auto fn = m_function_callbacks.at(id);
+                if (m_call_callbacks.find(id) != m_call_callbacks.end()) {
+                    auto fn = m_call_callbacks.at(id);
                     fn("", payload.c_str(), id);
-                    m_function_callbacks.erase(id);
+                    m_call_callbacks.erase(id);
                 }
-                if (m_get_subs.find(id) != m_get_subs.end()) {
-                    for (auto get_id : m_get_subs.at(id)) {
+                if (m_obs_to_gets.find(id) != m_obs_to_gets.end()) {
+                    for (auto get_id : m_obs_to_gets.at(id)) {
                         auto fn = m_get_sub_callbacks.at(get_id);
                         fn("", payload.c_str(), id);
                         m_get_sub_callbacks.erase(get_id);
                     }
-                    m_get_subs.erase(id);
+                    m_obs_to_gets.erase(id);
                 }
-            }
-            if (error.find("observableId") != error.end()) {
+            } else if (error.find("observableId") != error.end()) {
                 // destroy observable
                 auto obs_id = error.at("observableId");
 
-                m_observe_requests.erase(obs_id);
+                m_active_observables.erase(obs_id);
 
-                if (m_observe_subs.find(obs_id) != m_observe_subs.end()) {
-                    for (auto sub_id : m_observe_subs.at(obs_id)) {
+                if (m_obs_to_subs.find(obs_id) != m_obs_to_subs.end()) {
+                    for (auto sub_id : m_obs_to_subs.at(obs_id)) {
                         if (m_sub_callback.find(sub_id) != m_sub_callback.end()) {
                             auto fn = m_sub_callback.at(sub_id);
                             fn("", 0, payload.c_str(), sub_id);
                         }
-                        m_observe_subs.erase(sub_id);
+                        m_obs_to_subs.erase(sub_id);
                         m_sub_to_obs.erase(sub_id);
                     }
                 }
 
-                if (m_get_subs.find(obs_id) != m_get_subs.end()) {
-                    for (auto sub_id : m_get_subs.at(obs_id)) {
+                if (m_obs_to_gets.find(obs_id) != m_obs_to_gets.end()) {
+                    for (auto sub_id : m_obs_to_gets.at(obs_id)) {
                         auto fn = m_get_sub_callbacks.at(sub_id);
                         fn("", payload.c_str(), sub_id);
                         m_get_sub_callbacks.erase(sub_id);
                     }
-                    m_get_subs.at(obs_id).clear();
+                    m_obs_to_gets.at(obs_id).clear();
                 }
+            } else if (error.find("channelId") != error.end()) {
+                auto channel_id = error.at("observableId");
+
+                m_active_channels.erase(channel_id);
+
+                if (m_channel_to_subs.find(channel_id) != m_channel_to_subs.end()) {
+                    for (auto sub_id : m_channel_to_subs.at(channel_id)) {
+                        if (m_channel_callback.find(sub_id) != m_channel_callback.end()) {
+                            auto fn = m_channel_callback.at(sub_id);
+                            fn("", payload.c_str(), sub_id);
+                        }
+                        m_channel_to_subs.erase(sub_id);
+                        m_sub_to_channel.erase(sub_id);
+                    }
+                }
+            } else {
+                std::cerr << "ERROR MESSAGE WITHOUT ID = " << error << std::endl;
             }
+        }
+            return;
+        case IncomingType::CHANNEL_REPUBLISH: {
+            BASED_LOG("received CHANNEL_REPUBLISH message");
+        }
+            return;
+        case IncomingType::CHANNEL_MESSAGE: {
+            BASED_LOG("received CHANNEL_MESSAGE message");
         }
             return;
         default:

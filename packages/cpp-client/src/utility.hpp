@@ -4,6 +4,9 @@
 #include <string>
 #include <vector>
 
+using checksum_t = uint64_t;
+using obs_id_t = uint32_t;
+
 // #define BASED_VERBOSE 1
 
 namespace Utility {
@@ -22,6 +25,12 @@ std::vector<uint8_t> encode_get_message(uint64_t id,
                                         std::string name,
                                         std::string& payload,
                                         uint64_t checksum);
+std::vector<uint8_t> encode_subscribe_channel_message(obs_id_t id,
+                                                      std::string name,
+                                                      std::string& payload,
+                                                      bool is_request_subscriber);
+std::vector<uint8_t> encode_publish_channel_message(obs_id_t id, std::string& payload);
+
 std::vector<uint8_t> encode_auth_message(std::string& auth_state);
 int32_t get_payload_type(int32_t header);
 int32_t get_payload_len(int32_t header);

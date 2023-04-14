@@ -18,7 +18,8 @@ extern "C" char* Based__get_service(based_id client_id,
                                     char* env,
                                     char* name,
                                     char* key,
-                                    bool optional_key);
+                                    bool optional_key,
+                                    bool html);
 
 extern "C" void Based__connect_to_url(based_id client_id, char* url);
 extern "C" void Based__connect(based_id client_id,
@@ -58,8 +59,17 @@ extern "C" int Based__call(based_id client_id,
                                       const char* /* Error */,
                                       int /*request_id*/));
 
+extern "C" int Based__channel_subscribe(based_id client_id,
+                                        char* name,
+                                        char* payload,
+                                        void (*cb)(const char* /* Data */,
+                                                   const char* /* Error */,
+                                                   int /*request_id*/));
+
 extern "C" void Based__set_auth_state(based_id client_id,
                                       char* state,
                                       void (*cb)(const char* /* Auth response */));
+
+extern "C" void Based__channel_unsubscribe(based_id client_id, int id);
 
 #endif

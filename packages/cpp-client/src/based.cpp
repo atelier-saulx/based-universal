@@ -36,13 +36,14 @@ extern "C" char* Based__get_service(based_id client_id,
                                     char* env,
                                     char* name,
                                     char* key,
-                                    bool optional_key) {
+                                    bool optional_key,
+                                    bool html) {
     if (clients.find(client_id) == clients.end()) {
         std::cerr << "No such id found" << std::endl;
         return (char*)"";
     }
     auto cl = clients.at(client_id);
-    auto res = cl->get_service(cluster, org, project, env, name, key, optional_key);
+    auto res = cl->discover_service(cluster, org, project, env, name, key, optional_key, html);
     strncpy(get_service_buf, res.c_str(), res.length());
     return get_service_buf;
 }
@@ -136,4 +137,39 @@ extern "C" void Based__set_auth_state(based_id client_id, char* state, void (*cb
     }
     auto cl = clients.at(client_id);
     cl->set_auth_state(state, cb);
+}
+
+extern "C" int Based__channel_subscribe(based_id client_id,
+                                        char* name,
+                                        char* payload,
+                                        void (*cb)(const char* /* Data */,
+                                                   const char* /* Error */,
+                                                   int /*request_id*/)) {
+    if (clients.find(client_id) == clients.end()) {
+        std::cerr << "No such id found" << std::endl;
+        return;
+    }
+    auto cl = clients.at(client_id);
+    cl->channel_subscribe(name, payload, cb);
+}
+
+extern "C" void Based__channel_unsubscribe(based_id client_id, int id) {
+    if (clients.find(client_id) == clients.end()) {
+        std::cerr << "No such id found" << std::endl;
+        return;
+    }
+    auto cl = clients.at(client_id);
+    cl->channel_unsubscribe(id);
+}
+
+extern "C" void Based__channel_publish(based_id client_id,
+                                       char* name,
+                                       char* payload,
+                                       char* message) {
+    if (clients.find(client_id) == clients.end()) {
+        std::cerr << "No such id found" << std::endl;
+        return;
+    }
+    auto cl = clients.at(client_id);
+    cl->channel_publish(name, payload, message);
 }
