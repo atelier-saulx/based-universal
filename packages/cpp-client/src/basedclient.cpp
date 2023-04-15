@@ -65,7 +65,7 @@ int BasedClient::channel_subscribe(std::string name,
 
         m_active_channels[obs_id] = new Observable(name, payload);
 
-        m_channel_to_subs[obs_id] = std::set<int>{sub_id};
+        m_channel_to_subs[obs_id] = std::set<sub_id_t>{sub_id};
 
         m_sub_to_channel[sub_id] = obs_id;
 
@@ -152,7 +152,7 @@ int BasedClient::observe(std::string name,
                           * Callback that the observable will trigger.
                           */
                          void (*cb)(const char* /*data*/,
-                                    uint64_t /*checksum*/,
+                                    checksum_t /*checksum*/,
                                     const char* /*error*/,
                                     int /*sub_id*/)) {
     /**
@@ -188,7 +188,7 @@ int BasedClient::observe(std::string name,
         m_active_observables[obs_id] = new Observable(name, payload);
 
         // add subscriber to list of subs for this observable
-        m_obs_to_subs[obs_id] = std::set<int>{sub_id};
+        m_obs_to_subs[obs_id] = std::set<sub_id_t>{sub_id};
 
         // record what obs this sub is for, to delete it later
         m_sub_to_obs[sub_id] = obs_id;
@@ -220,19 +220,19 @@ int BasedClient::get(std::string name,
                      std::string payload,
                      void (*cb)(const char* /*data*/, const char* /*error*/, int /*sub_id*/)) {
     auto obs_id = make_obs_id(name, payload);
-    int32_t sub_id = m_sub_id++;
+    auto sub_id = m_sub_id++;
 
     // if obs_id exists in get_subs, add new sub to list
     if (m_obs_to_gets.find(obs_id) != m_obs_to_gets.end()) {
         m_obs_to_gets.at(obs_id).insert(sub_id);
     } else {  // else create it and then add it
-        m_obs_to_gets[obs_id] = std::set<int>{sub_id};
+        m_obs_to_gets[obs_id] = std::set<sub_id_t>{sub_id};
     }
     m_get_sub_callbacks[sub_id] = cb;
     // is there an active obs? if so, do nothing (get will trigger on next update)
     // if there isnt, queue request
     if (m_active_observables.find(obs_id) == m_active_observables.end()) {
-        uint64_t checksum = 0;
+        checksum_t checksum = 0;
 
         if (m_cache.find(obs_id) != m_cache.end()) {
             // if cache for this obs exists
@@ -264,7 +264,7 @@ void BasedClient::unobserve(int sub_id) {
 
     // if the list is now empty, add request to unobserve to queue
     if (m_obs_to_subs.at(obs_id).empty()) {
-        BASED_LOG("Unobserve request queued for obs_id %d", obs_id);
+        BASED_LOG("Unobserve request queued for obs_id %llu", obs_id);
         std::vector<uint8_t> msg = Utility::encode_unobserve_message(obs_id);
         m_unobserve_queue.push_back(msg);
         // and remove the obs from the map of active ones.
@@ -283,7 +283,7 @@ int BasedClient::call(std::string name,
     if (m_request_id > 16777215) {
         m_request_id = 0;
     }
-    int id = m_request_id;
+    auto id = m_request_id;
     m_call_callbacks[id] = cb;
     // encode the message
     std::vector<uint8_t> msg = Utility::encode_function_message(id, name, payload);
@@ -378,7 +378,7 @@ void BasedClient::drain_queues() {
     }
 }
 
-void BasedClient::request_full_data(uint64_t obs_id) {
+void BasedClient::request_full_data(obs_id_t obs_id) {
     if (m_active_observables.find(obs_id) == m_active_observables.end()) {
         return;
     }
@@ -417,7 +417,7 @@ void BasedClient::on_message(std::string message) {
     switch (type) {
         case IncomingType::FUNCTION_DATA: {
             BASED_LOG("Received FUNCTION_DATA message");
-            int id = Utility::read_bytes_from_string(message, 4, 3);
+            req_id_t id = (req_id_t)Utility::read_bytes_from_string(message, 4, 3);
 
             if (m_call_callbacks.find(id) != m_call_callbacks.end()) {
                 auto fn = m_call_callbacks.at(id);
@@ -438,7 +438,7 @@ void BasedClient::on_message(std::string message) {
             return;
         case IncomingType::SUBSCRIPTION_DATA: {
             BASED_LOG("Received SUBSCRIPTION_DATA message");
-            uint32_t obs_id = Utility::read_bytes_from_string(message, 4, 8);
+            obs_id_t obs_id = (obs_id_t)Utility::read_bytes_from_string(message, 4, 8);
             uint64_t checksum = Utility::read_bytes_from_string(message, 12, 8);
 
             int start = 20;  // size of header
@@ -474,7 +474,7 @@ void BasedClient::on_message(std::string message) {
             return;
         case IncomingType::SUBSCRIPTION_DIFF_DATA: {
             BASED_LOG("Received SUBSCRIPTION_DIFF_DATA message");
-            uint32_t obs_id = Utility::read_bytes_from_string(message, 4, 8);
+            obs_id_t obs_id = (obs_id_t)Utility::read_bytes_from_string(message, 4, 8);
             uint64_t checksum = Utility::read_bytes_from_string(message, 12, 8);
             uint64_t prev_checksum = Utility::read_bytes_from_string(message, 20, 8);
 
@@ -536,7 +536,7 @@ void BasedClient::on_message(std::string message) {
                 m_cache.find(obs_id) != m_cache.end()) {
                 for (auto sub_id : m_obs_to_gets.at(obs_id)) {
                     auto fn = m_get_sub_callbacks.at(sub_id);
-                    fn(m_cache.at(obs_id).first.c_str(), "", obs_id);
+                    fn(m_cache.at(obs_id).first.c_str(), "", sub_id);
                     m_get_sub_callbacks.erase(sub_id);
                 }
                 m_obs_to_gets.at(obs_id).clear();
@@ -567,6 +567,7 @@ void BasedClient::on_message(std::string message) {
         }
             return;
         case IncomingType::ERROR_DATA: {
+            BASED_LOG("Received ERROR_DATA message");
             int32_t start = 4;
             int32_t end = len + 4;
             std::string payload = "{}";
@@ -576,7 +577,6 @@ void BasedClient::on_message(std::string message) {
             }
 
             json error = json::parse(payload);
-            // BASED_LOG("Received ERROR_DATA message: \n%s");
             // fire once
             if (error.find("requestId") != error.end()) {
                 auto id = error.at("requestId");
@@ -678,7 +678,7 @@ void BasedClient::on_message(std::string message) {
                         fn(payload.c_str(), "", sub_id);
                     }
                 } else {
-                    BASED_LOG("Channel message received, but no listeners with obs_id %d found",
+                    BASED_LOG("Channel message received, but no listeners with obs_id %llu found",
                               obs_id);
                 }
 

@@ -13,8 +13,8 @@ void based_auth_cb(const char* data) {
 }
 
 void based_cb(const char* data, const char* error, int id) {
-    int len_data = strlen(data);
-    int len_error = strlen(error);
+    auto len_data = strlen(data);
+    auto len_error = strlen(error);
     if (len_data > 0) {
         std::cout << "[" << id << "] DATA = " << data << std::endl;
     }
@@ -24,8 +24,8 @@ void based_cb(const char* data, const char* error, int id) {
 }
 
 void based_observe_cb(const char* data, uint64_t checksum, const char* error, int id) {
-    int len_data = strlen(data);
-    int len_error = strlen(error);
+    auto len_data = strlen(data);
+    auto len_error = strlen(error);
     if (len_data > 0) {
         std::cout << "[" << id << "] DATA {" << checksum << "} = " << data << std::endl;
     }
@@ -138,7 +138,6 @@ int main(int argc, char** argv) {
                 payload = cmd.substr(0, idx - 3);
                 idx = cmd.find(" ");
                 cmd.erase(0, idx + 1);
-                std::string;
                 if (idx == std::string::npos) {
                     message = "";
                 } else {

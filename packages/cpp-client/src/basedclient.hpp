@@ -22,8 +22,8 @@ class BasedClient {
    private:
     WsConnection m_con;
 
-    int32_t m_request_id;
-    int32_t m_sub_id;
+    req_id_t m_request_id;
+    sub_id_t m_sub_id;
 
     bool m_auth_in_progress;
     std::string m_auth_state;
@@ -63,26 +63,26 @@ class BasedClient {
      * The list of all the active observables. These should only be deleted when
      * there are no active subs for it. It's used in the event of a reconnection.
      */
-    std::map<int, Observable*> m_active_observables;
+    std::map<obs_id_t, Observable*> m_active_observables;
 
     /**
      * map<obs_hash, list of sub_ids>
      * The list of subscribers to the observable. These are tied to a on_data function, which should
      * be fired appropriately.
      */
-    std::map<int, std::set<int>> m_obs_to_subs;
+    std::map<obs_id_t, std::set<sub_id_t>> m_obs_to_subs;
 
     /**
      * <sub_id, obs_hash>
      *  Mapping of which observable a sub_id refers to. Necessary for .unobserve.
      */
-    std::map<int, int> m_sub_to_obs;
+    std::map<sub_id_t, obs_id_t> m_sub_to_obs;
 
     /**
      * map<sub_id, on_data callback>
      * List of on_data callback to call when receiving the data.
      */
-    std::map<int, void (*)(const char*, uint64_t, const char*, int)> m_sub_callback;
+    std::map<sub_id_t, void (*)(const char*, checksum_t, const char*, int)> m_sub_callback;
 
     ////////////////
     // channels
@@ -108,19 +108,19 @@ class BasedClient {
      * The list of subscribers to the observable. These are tied to a on_data function, which should
      * be fired appropriately.
      */
-    std::map<obs_id_t, std::set<int>> m_channel_to_subs;
+    std::map<obs_id_t, std::set<sub_id_t>> m_channel_to_subs;
 
     /**
      * <sub_id, obs_id>
      *  Mapping of which observable a sub_id refers to. Necessary for .unobserve.
      */
-    std::map<int, obs_id_t> m_sub_to_channel;
+    std::map<sub_id_t, obs_id_t> m_sub_to_channel;
 
     /**
      * map<sub_id, on_data callback>
      * List of on_data callback to call when receiving the data.
      */
-    std::map<int, void (*)(const char*, const char*, int)> m_channel_callback;
+    std::map<sub_id_t, void (*)(const char*, const char*, int)> m_channel_callback;
 
     ////////////////
     // gets
@@ -131,13 +131,13 @@ class BasedClient {
      * The list of getters to the observable. These should be fired once, when receiving
      * the sub data, and immediatly cleaned up.
      */
-    std::map<int, std::set<int>> m_obs_to_gets;
+    std::map<obs_id_t, std::set<sub_id_t>> m_obs_to_gets;
 
     /**
      * map<sub_id, on_data callback>
      * List of on_data callback to call when receiving the data. Should be deleted after firing.
      */
-    std::map<int, void (*)(const char*, const char*, int)> m_get_sub_callbacks;
+    std::map<sub_id_t, void (*)(const char*, const char*, int)> m_get_sub_callbacks;
 
    public:
     BasedClient();
@@ -197,12 +197,13 @@ class BasedClient {
     /**
      * @brief Observe a function. This returns the sub_id used to unsubscribe with .unobserve(id)
      */
-    int observe(std::string name,
-                std::string payload,
-                /**
-                 * Callback that the observable will trigger.
-                 */
-                void (*cb)(const char* /*data*/, uint64_t, const char* /*error*/, int /*sub_id*/));
+    int observe(
+        std::string name,
+        std::string payload,
+        /**
+         * Callback that the observable will trigger.
+         */
+        void (*cb)(const char* /*data*/, checksum_t, const char* /*error*/, int /*sub_id*/));
 
     /**
      * @brief Get the value of an observable only once. The callback will trigger when the function
@@ -271,7 +272,7 @@ class BasedClient {
      *
      * @param obs_id
      */
-    void request_full_data(uint64_t obs_id);
+    void request_full_data(obs_id_t obs_id);
 
     /**
      * @brief (Re)send the list of active observables when the connection (re)opens
