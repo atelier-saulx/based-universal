@@ -125,6 +125,33 @@ int main(int argc, char** argv) {
             std::cout << "--> Channel subscribe '" << name << "', payload = \"" << payload << "\""
                       << std::endl;
             Based__channel_subscribe(client1, f, p, &based_cb);
+        } else if (cmd.substr(0, 6) == "ch_pub") {
+            cmd.erase(0, 7);
+            auto idx = cmd.find(" ");
+            auto name = cmd.substr(0, idx);
+            cmd.erase(0, idx + 1);
+            std::string payload;
+            std::string message;
+            if (idx == std::string::npos) {
+                payload = "";
+            } else {
+                payload = cmd.substr(0, idx - 3);
+                idx = cmd.find(" ");
+                cmd.erase(0, idx + 1);
+                std::string;
+                if (idx == std::string::npos) {
+                    message = "";
+                } else {
+                    message = cmd;
+                }
+            }
+
+            char* f = &*name.begin();
+            char* p = &*payload.begin();
+            char* m = &*message.begin();
+            std::cout << "--> Channel publish '" << name << "', payload = \"" << payload
+                      << "\", message:\"" << message << "\"" << std::endl;
+            Based__channel_publish(client1, f, p, m);
         } else if (cmd.substr(0, 1) == "r") {
             int rem_id = atoi(cmd.substr(2).c_str());
             Based__unobserve(client1, rem_id);

@@ -96,6 +96,14 @@ class BasedClient {
     std::map<obs_id_t, Observable*> m_active_channels;
 
     /**
+     * map<obs_hash, Observable object>
+     * It's necessary to keep a list of channels that the client publishes to,
+     * even if not subscribed to it, due to the re-publish mechanism.
+     * TODO: this will grow endlessly, need a way to occasionally clean it up
+     */
+    std::map<obs_id_t, Observable*> m_active_publish_channels;
+
+    /**
      * map<obs_hash, list of sub_ids>
      * The list of subscribers to the observable. These are tied to a on_data function, which should
      * be fired appropriately.

@@ -84,9 +84,21 @@ int BasedClient::channel_subscribe(std::string name,
     drain_queues();
 }
 
-void BasedClient::channel_unsubscribe(int sub_id) {}
+void BasedClient::channel_publish(std::string name, std::string payload, std::string message) {
+    auto obs_id = make_obs_id(name, payload);
 
-void BasedClient::channel_publish(std::string name, std::string payload, std::string message) {}
+    if (m_active_publish_channels.find(obs_id) == m_active_publish_channels.end()) {
+        m_active_publish_channels[obs_id] = new Observable(name, payload);
+    }
+
+    std::vector<uint8_t> msg = Utility::encode_publish_channel_message(obs_id, message);
+
+    m_channel_publish_queue.push_back(msg);
+
+    drain_queues();
+}
+
+void BasedClient::channel_unsubscribe(int sub_id) {}
 
 std::string BasedClient::discover_service(std::string cluster,
                                           std::string org,
@@ -315,6 +327,20 @@ void BasedClient::drain_queues() {
         m_channel_sub_queue.clear();
     }
 
+    if (!m_channel_unsub_queue.empty()) {
+        for (auto msg : m_channel_unsub_queue) {
+            buff.insert(buff.end(), msg.begin(), msg.end());
+        }
+        m_channel_unsub_queue.clear();
+    }
+
+    if (!m_channel_publish_queue.empty()) {
+        for (auto msg : m_channel_publish_queue) {
+            buff.insert(buff.end(), msg.begin(), msg.end());
+        }
+        m_channel_publish_queue.clear();
+    }
+
     if (!m_observe_queue.empty()) {
         for (auto msg : m_observe_queue) {
             buff.insert(buff.end(), msg.begin(), msg.end());
@@ -347,6 +373,8 @@ void BasedClient::drain_queues() {
         if (m_con.status() == ConnectionStatus::OPEN) {
             m_con.send(buff);
         }
+    } else {
+        BASED_LOG("Queue was empty, could not send anything");
     }
 }
 
@@ -614,10 +642,49 @@ void BasedClient::on_message(std::string message) {
             return;
         case IncomingType::CHANNEL_REPUBLISH: {
             BASED_LOG("received CHANNEL_REPUBLISH message");
+            obs_id_t obs_id = Utility::read_bytes_from_string(message, 4, 8);
+            // if (m_active_channels.find(obs_id) != m_active_channels.end()) {
+            auto obs = m_active_publish_channels.at(obs_id);
+
+            // first time this channel is observed
+
+            std::vector<uint8_t> msg =
+                Utility::encode_subscribe_channel_message(obs_id, obs->name, obs->payload, true);
+
+            m_channel_sub_queue.push_back(msg);
+            drain_queues();
+            // } else {
+            //     BASED_LOG("No obsId?");
+            // }
         }
             return;
         case IncomingType::CHANNEL_MESSAGE: {
             BASED_LOG("received CHANNEL_MESSAGE message");
+
+            auto sub_type = Utility::read_bytes_from_string(message, 4, 1);
+            if (sub_type == 0) {
+                obs_id_t obs_id = Utility::read_bytes_from_string(message, 5, 8);
+                int start = 13;
+                int end = len + 5;
+
+                std::string payload = "";
+                if (len != 9) {
+                    payload = is_deflate ? Utility::inflate_string(message.substr(start, end))
+                                         : message.substr(start, end);
+                }
+                if (m_channel_to_subs.find(obs_id) != m_channel_to_subs.end()) {
+                    for (auto sub_id : m_channel_to_subs.at(obs_id)) {
+                        auto fn = m_channel_callback.at(sub_id);
+                        fn(payload.c_str(), "", sub_id);
+                    }
+                } else {
+                    BASED_LOG("Channel message received, but no listeners with obs_id %d found",
+                              obs_id);
+                }
+
+            } else {
+                BASED_LOG("Wrong subtype received... %lld", sub_type);
+            }
         }
             return;
         default:

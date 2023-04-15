@@ -59,6 +59,10 @@ extern "C" int Based__call(based_id client_id,
                                       const char* /* Error */,
                                       int /*request_id*/));
 
+extern "C" void Based__set_auth_state(based_id client_id,
+                                      char* state,
+                                      void (*cb)(const char* /* Auth response */));
+
 extern "C" int Based__channel_subscribe(based_id client_id,
                                         char* name,
                                         char* payload,
@@ -66,10 +70,11 @@ extern "C" int Based__channel_subscribe(based_id client_id,
                                                    const char* /* Error */,
                                                    int /*request_id*/));
 
-extern "C" void Based__set_auth_state(based_id client_id,
-                                      char* state,
-                                      void (*cb)(const char* /* Auth response */));
-
 extern "C" void Based__channel_unsubscribe(based_id client_id, int id);
+
+extern "C" void Based__channel_publish(based_id client_id,
+                                       char* name,
+                                       char* payload,
+                                       char* message);
 
 #endif
