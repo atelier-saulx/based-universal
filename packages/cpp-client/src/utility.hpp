@@ -13,7 +13,7 @@ using checksum_t = uint64_t;
 /**
  * 8 bytes in the protocol
  */
-using obs_id_t = uint64_t;
+using obs_id_t = uint32_t;
 
 /**
  * This is represented by 3 bytes in the protocol, so one must check for overflows
