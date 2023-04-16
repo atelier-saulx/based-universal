@@ -147,7 +147,7 @@ extern "C" int Based__channel_subscribe(based_id client_id,
                                                    int /*request_id*/)) {
     if (clients.find(client_id) == clients.end()) {
         std::cerr << "No such id found" << std::endl;
-        return;
+        return -1;
     }
     auto cl = clients.at(client_id);
     cl->channel_subscribe(name, payload, cb);
