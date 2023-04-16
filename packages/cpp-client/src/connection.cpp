@@ -33,18 +33,27 @@ std::string gen_cache(BasedConnectOpt opts) {
 }
 
 std::string gen_discovery_url(BasedConnectOpt opts) {
-    std::string url;
-    if (opts.cluster.length() > 0 && opts.cluster != "production") {
-        if (opts.cluster == "local") {
-            // TODO: implement getServicePort to allow this
-            throw std::runtime_error(
-                "Cannot connect to local using discovery_url generation, please use a direct url");
-        }
-        url = "https://" + opts.org + "-" + opts.project + "-" + opts.env + "-" + opts.cluster +
-              ".based.dev";
-        return url;
+    if (opts.cluster == "local") {
+        // TODO: implement getServicePort to allow this
+        throw std::runtime_error(
+            "Cannot connect to local using discovery_url generation, please use a direct url");
     }
-    url = "https://" + opts.org + "-" + opts.project + "-" + opts.env + ".based.dev";
+
+    std::string name_to_hash = opts.cluster + ":" + opts.org + ":" + opts.project + ":" + opts.env;
+    std::string affix = "-" + Utility::base36_encode(Utility::string_hash(name_to_hash));
+    if (opts.cluster != "production") {
+        affix += "-" + opts.cluster;
+    }
+    std::string prefix = opts.org + "-" + opts.project + "-" + opts.env;
+    auto len = prefix.length() + affix.length();
+    if (len > 63) {
+        prefix = prefix.substr(0, 63 - len);
+    }
+
+    std::string url = "https://" + prefix + affix + ".based.dev";
+
+    BASED_LOG("GENERATED DISCOVERY URL = %s", url.c_str());
+
     return url;
 }
 

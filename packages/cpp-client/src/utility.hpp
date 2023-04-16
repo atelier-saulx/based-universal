@@ -29,6 +29,14 @@ using sub_id_t = uint32_t;
 // #define BASED_VERBOSE 1
 
 namespace Utility {
+unsigned int string_hash(const std::string& str, unsigned int hash = 5381);
+// std::string friendly_id(std::string& cluster,
+//                         std::string& org,
+//                         std::string& project,
+//                         std::string& env);
+
+std::string base36_encode(uint64_t value);
+
 std::string inflate_string(const std::string& str);
 std::string deflate_string(const std::string& str);
 

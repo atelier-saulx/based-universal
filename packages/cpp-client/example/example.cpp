@@ -37,10 +37,10 @@ void based_observe_cb(const char* data, uint64_t checksum, const char* error, in
 int main(int argc, char** argv) {
     int client1 = Based__new_client();
 
-    // Based__connect(client1, (char*)"", (char*)"saulx", (char*)"test", (char*)"framme", (char*)"",
-    //                (char*)"", false);
+    Based__connect(client1, (char*)"test", (char*)"saulx", (char*)"test", (char*)"framme",
+                   (char*)"", (char*)"", false);
 
-    Based__connect_to_url(client1, (char*)"ws://localhost:9999");
+    // Based__connect_to_url(client1, (char*)"ws://localhost:9999");
 
     bool done = false;
     std::string cmd;

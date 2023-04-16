@@ -17,11 +17,11 @@ typedef websocketpp::client<websocketpp::config::asio_client> ws_client;  // No 
 enum ConnectionStatus { OPEN = 0, CONNECTING, CLOSED, FAILED, TERMINATED_BY_USER };
 
 struct BasedConnectOpt {
-    std::string cluster;
+    std::string cluster = "production";
     std::string org;
     std::string project;
     std::string env;
-    std::string name;
+    std::string name = "@based/env-hub";
     std::string key;
     bool optional_key;
     std::string url;

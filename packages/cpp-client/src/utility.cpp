@@ -17,6 +17,43 @@ std::string string_from_char_code(uint8_t c) {
     return res;
 }
 
+unsigned int Utility::string_hash(const std::string& str, unsigned int hash) {
+    int i = str.length();
+    while (i) {
+        const char c = str[--i];
+        hash = (hash * 33) ^ c;
+    }
+    return hash;
+}
+
+std::string Utility::base36_encode(uint64_t value) {
+    static const char charset[] = "0123456789abcdefghijklmnopqrstuvwxyz";
+    std::stringstream ss;
+    do {
+        ss << charset[value % 36];
+        value /= 36;
+    } while (value != 0);
+    std::string result = ss.str();
+    std::reverse(result.begin(), result.end());
+    return result;
+}
+
+// std::string Utility::friendly_id(std::string& cluster,
+//                                  std::string& org,
+//                                  std::string& project,
+//                                  std::string& env) {
+//     std::string str = cluster + ":" + org + ":" + project + ":" + env;
+//     unsigned int hash = string_hash(str);
+//     std::string friendlyId = std::to_string(hash);
+//     std::string::iterator it;
+//     for (it = friendlyId.begin(); it != friendlyId.end(); ++it) {
+//         if (*it >= '0' && *it <= '9') {
+//             *it = *it - '0' + 'a';
+//         }
+//     }
+//     return friendlyId;
+// }
+
 std::vector<std::string> Utility::split_string(std::string input, std::string delimiter) {
     std::vector<std::string> res;
 
