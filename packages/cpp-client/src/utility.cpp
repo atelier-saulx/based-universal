@@ -354,6 +354,22 @@ std::vector<uint8_t> Utility::encode_subscribe_channel_message(obs_id_t id,
     return buff;
 }
 
+std::vector<uint8_t> Utility::encode_unsubscribe_channel_message(obs_id_t id) {
+    // Type 6 = unsubscribe
+    // | 4 header | 8 id |
+
+    std::vector<uint8_t> buff;
+
+    /**
+     * Length in bytes. 4 B header + 8 B id + 8 B checksum,
+     * add the rest later based on payload and name.
+     */
+    append_header(buff, 6, false, 12);
+    append_bytes(buff, id, 8);
+
+    return buff;
+}
+
 std::vector<uint8_t> Utility::encode_publish_channel_message(obs_id_t id, std::string& payload) {
     // | 4 header | 8 id | * payload |
 

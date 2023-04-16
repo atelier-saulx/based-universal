@@ -47,59 +47,6 @@ inline obs_id_t make_obs_id(std::string& name, std::string& payload) {
 ///////////////////////// Client methods /////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-int BasedClient::channel_subscribe(std::string name,
-                                   std::string payload,
-                                   void (*cb)(const char* /*data*/,
-                                              const char* /*error*/,
-                                              int /*sub_id*/)) {
-    auto obs_id = make_obs_id(name, payload);
-    auto sub_id = m_sub_id++;
-
-    if (m_active_channels.find(obs_id) == m_active_channels.end()) {
-        // first time this channel is observed
-
-        std::vector<uint8_t> msg =
-            Utility::encode_subscribe_channel_message(obs_id, name, payload, false);
-
-        m_channel_sub_queue.push_back(msg);
-
-        m_active_channels[obs_id] = new Observable(name, payload);
-
-        m_channel_to_subs[obs_id] = std::set<sub_id_t>{sub_id};
-
-        m_sub_to_channel[sub_id] = obs_id;
-
-        m_channel_callback[sub_id] = cb;
-    } else {
-        // this query has already been requested once, only add subscriber,
-        // dont send a new request.
-
-        m_channel_to_subs.at(obs_id).insert(sub_id);
-
-        m_sub_to_channel[sub_id] = obs_id;
-
-        m_channel_callback[sub_id] = cb;
-    }
-
-    drain_queues();
-}
-
-void BasedClient::channel_publish(std::string name, std::string payload, std::string message) {
-    auto obs_id = make_obs_id(name, payload);
-
-    if (m_active_publish_channels.find(obs_id) == m_active_publish_channels.end()) {
-        m_active_publish_channels[obs_id] = new Observable(name, payload);
-    }
-
-    std::vector<uint8_t> msg = Utility::encode_publish_channel_message(obs_id, message);
-
-    m_channel_publish_queue.push_back(msg);
-
-    drain_queues();
-}
-
-void BasedClient::channel_unsubscribe(int sub_id) {}
-
 std::string BasedClient::discover_service(std::string cluster,
                                           std::string org,
                                           std::string project,
@@ -303,6 +250,89 @@ void BasedClient::set_auth_state(std::string state, void (*cb)(const char*)) {
     drain_queues();
 }
 
+int BasedClient::channel_subscribe(std::string name,
+                                   std::string payload,
+                                   void (*cb)(const char* /*data*/,
+                                              const char* /*error*/,
+                                              int /*sub_id*/)) {
+    auto obs_id = make_obs_id(name, payload);
+    auto sub_id = m_sub_id++;
+
+    if (m_active_channels.find(obs_id) == m_active_channels.end()) {
+        // first time this channel is observed
+
+        std::vector<uint8_t> msg =
+            Utility::encode_subscribe_channel_message(obs_id, name, payload, false);
+
+        m_channel_sub_queue.push_back(msg);
+
+        m_active_channels[obs_id] = new Observable(name, payload);
+
+        m_channel_to_subs[obs_id] = std::set<sub_id_t>{sub_id};
+
+        m_sub_to_channel[sub_id] = obs_id;
+
+        m_channel_callback[sub_id] = cb;
+    } else {
+        // this query has already been requested once, only add subscriber,
+        // dont send a new request.
+
+        m_channel_to_subs.at(obs_id).insert(sub_id);
+
+        m_sub_to_channel[sub_id] = obs_id;
+
+        m_channel_callback[sub_id] = cb;
+    }
+
+    drain_queues();
+
+    return sub_id;
+}
+
+void BasedClient::channel_publish(std::string name, std::string payload, std::string message) {
+    auto obs_id = make_obs_id(name, payload);
+
+    if (m_active_publish_channels.find(obs_id) == m_active_publish_channels.end()) {
+        m_active_publish_channels[obs_id] = new Observable(name, payload);
+    }
+
+    std::vector<uint8_t> msg = Utility::encode_publish_channel_message(obs_id, message);
+
+    m_channel_publish_queue.push_back(msg);
+
+    drain_queues();
+}
+
+void BasedClient::channel_unsubscribe(int sub_id) {
+    if (m_sub_to_channel.find(sub_id) == m_sub_to_channel.end()) {
+        BASED_LOG("No subscription found with sub_id %d", sub_id);
+        return;
+    }
+    auto obs_id = m_sub_to_channel.at(sub_id);
+
+    // remove sub from list of subs for that observable
+    m_channel_to_subs.at(obs_id).erase(sub_id);
+
+    // remove on_data callback
+    m_sub_callback.erase(sub_id);
+
+    // remove sub to obs mapping for removed sub
+    m_sub_to_channel.erase(sub_id);
+
+    // if the list is now empty, add request to unobserve to queue
+    if (m_channel_to_subs.at(obs_id).empty()) {
+        BASED_LOG("Unobserve request queued for obs_id %llu", obs_id);
+        std::vector<uint8_t> msg = Utility::encode_unobserve_message(obs_id);
+        m_unobserve_queue.push_back(msg);
+        // and remove the obs from the map of active ones.
+        delete m_active_channels.at(obs_id);
+        m_active_channels.erase(obs_id);
+        // and the vector of listeners, since it's now empty we can free the memory
+        m_channel_to_subs.erase(obs_id);
+    }
+    drain_queues();
+}
+
 /////////////////////////////////////////////////////////////
 /////////////////// End of client methods ///////////////////
 /////////////////////////////////////////////////////////////
@@ -373,8 +403,6 @@ void BasedClient::drain_queues() {
         if (m_con.status() == ConnectionStatus::OPEN) {
             m_con.send(buff);
         }
-    } else {
-        BASED_LOG("Queue was empty, could not send anything");
     }
 }
 

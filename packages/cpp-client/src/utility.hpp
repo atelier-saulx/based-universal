@@ -13,7 +13,8 @@ using checksum_t = uint64_t;
 /**
  * 8 bytes in the protocol
  */
-using obs_id_t = uint32_t;
+using obs_id_t = uint32_t;  // TODO: why does setting it to 64bits break it? check how it's encoded
+                            // on the server, might be something strange with signed/unsigned
 
 /**
  * This is represented by 3 bytes in the protocol, so one must check for overflows
@@ -49,6 +50,7 @@ std::vector<uint8_t> encode_subscribe_channel_message(obs_id_t obs_id,
                                                       std::string name,
                                                       std::string& payload,
                                                       bool is_request_subscriber);
+std::vector<uint8_t> encode_unsubscribe_channel_message(obs_id_t obs_id);
 std::vector<uint8_t> encode_publish_channel_message(obs_id_t id, std::string& payload);
 std::vector<uint8_t> encode_auth_message(std::string& auth_state);
 

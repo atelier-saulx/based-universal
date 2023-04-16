@@ -46,6 +46,7 @@ int main(int argc, char** argv) {
     std::string cmd;
 
     std::list<int> obs;
+    std::list<int> ch_subs;
 
     while (!done) {
         std::getline(std::cin, cmd);
@@ -59,6 +60,7 @@ int main(int argc, char** argv) {
             auto idx = cmd.find(" ");
             auto name = cmd.substr(0, idx);
             cmd.erase(0, idx + 1);
+
             std::string payload;
             if (idx == std::string::npos) {
                 payload = "";
@@ -124,12 +126,21 @@ int main(int argc, char** argv) {
             char* p = &*payload.begin();
             std::cout << "--> Channel subscribe '" << name << "', payload = \"" << payload << "\""
                       << std::endl;
-            Based__channel_subscribe(client1, f, p, &based_cb);
+            auto id = Based__channel_subscribe(client1, f, p, &based_cb);
+            ch_subs.push_back(id);
+        } else if (cmd.substr(0, 8) == "ch_unsub") {
+            cmd.erase(0, 9);
+            int rem_id = atoi(cmd.c_str());
+            std::cout << "--> Channel unsubscribe id:'" << rem_id << "\'" << std::endl;
+            ch_subs.remove(rem_id);
+
+            Based__channel_unsubscribe(client1, rem_id);
         } else if (cmd.substr(0, 6) == "ch_pub") {
             cmd.erase(0, 7);
             auto idx = cmd.find(" ");
             auto name = cmd.substr(0, idx);
             cmd.erase(0, idx + 1);
+
             std::string payload;
             std::string message;
             if (idx == std::string::npos) {
@@ -160,6 +171,12 @@ int main(int argc, char** argv) {
 
         std::cout << "obs = ";
         for (auto el : obs) {
+            std::cout << el << ", ";
+        }
+        std::cout << "\n";
+
+        std::cout << "ch_subs = ";
+        for (auto el : ch_subs) {
             std::cout << el << ", ";
         }
         std::cout << "\n";
