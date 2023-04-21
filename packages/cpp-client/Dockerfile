@@ -18,6 +18,6 @@ COPY ./example ./example
 # COPY ./build-scripts ./build-scripts
 # COPY ./CMakeLists.txt ./CMakeLists.txt
 COPY ./Makefile .
-# CMD apt-cache search ^libcurl
-CMD make && cp distribute/libbased.so ./out/
+CMD ls .
+CMD make && cp linux/libbased.so ./out/libbased.so
 # CMD cd build-scripts && bash ./build-linux.sh && cp -r build_linux/Release/ ./out/

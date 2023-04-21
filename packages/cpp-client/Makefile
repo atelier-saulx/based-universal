@@ -14,7 +14,7 @@ LDLIBS = -lz -lcurl
 
 ODIR=obj
 SRCDIR=src
-DISTDIR=distribute
+DISTDIR=linux
 
 LIBNAME = libbased
 
@@ -36,7 +36,7 @@ OBJS = basedclient.o \
 	utility.o \
 	based.o
 
-CXXFLAGS += -Wall -std=c++0x -D_WEBSOCKETPP_CPP11_STL_ -DASIO_STANDALONE -DBASED_VERBOSE -DBASED_TLS
+CXXFLAGS += -Wall -std=c++17 -D_WEBSOCKETPP_CPP11_STL_ -DASIO_STANDALONE -DBASED_VERBOSE -DBASED_TLS
 
 all: tls
 
