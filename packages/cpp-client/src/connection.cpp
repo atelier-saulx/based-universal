@@ -1,5 +1,8 @@
 #include "connection.hpp"
 #include <curl/curl.h>
+#include <cmath>
+#include <cstdlib>
+#include <ctime>
 #include <json.hpp>
 #include "utility.hpp"
 
@@ -7,6 +10,11 @@
 
 using namespace nlohmann::literals;
 using json = nlohmann::json;
+
+const std::map<std::string, int> SERVICES = {{"@based/env-hub", 0},
+                                             {"@based/env-admin-hub", 1},
+                                             {"@based/admin-hub", 2},
+                                             {"@based/machine-hub", 3}};
 
 ///////////////////////////////////////////////////
 //////////////// Helper functions /////////////////
@@ -27,9 +35,20 @@ size_t get_request_id_header(char* buffer, size_t size, size_t nitems, void* use
     return numbytes;
 }
 
+int random_number() {
+    std::srand(static_cast<unsigned int>(std::time(nullptr)));
+    return static_cast<int>(std::floor(std::rand() / (RAND_MAX + 1.0) * 10000));
+}
+
 std::string gen_cache(BasedConnectOpt opts) {
     std::string name = opts.name.length() > 0 ? opts.name : "@based/env-hub";
-    return name;
+    auto name_index = SERVICES.at(name);
+    auto random_path = random_number();
+    auto prefix = std::to_string(name_index) + std::to_string(random_path);
+    if (opts.key.length() > 0) {
+        return prefix + "/" + (opts.optional_key ? opts.key + "$" : opts.key);
+    }
+    return prefix;
 }
 
 std::string gen_discovery_url(BasedConnectOpt opts) {
@@ -39,16 +58,12 @@ std::string gen_discovery_url(BasedConnectOpt opts) {
             "Cannot connect to local using discovery_url generation, please use a direct url");
     }
 
-    std::string name_to_hash = opts.cluster + ":" + opts.org + ":" + opts.project + ":" + opts.env;
-    std::string affix = "-" + Utility::base36_encode(Utility::string_hash(name_to_hash));
-    if (opts.cluster != "production") {
-        affix += "-" + opts.cluster;
-    }
-    std::string prefix = opts.org + "-" + opts.project + "-" + opts.env;
-    auto len = prefix.length() + affix.length();
-    if (len > 63) {
-        prefix = prefix.substr(0, 63 - len);
-    }
+    auto hashed_env = Utility::hash_env(opts.org, opts.project, opts.env, opts.cluster);
+
+    BASED_LOG("hased env before based 36 = %lu", hashed_env);
+
+    std::string prefix = Utility::base36_encode(hashed_env);
+    std::string affix = "-status";
 
     std::string url = "https://" + prefix + affix + ".based.dev";
 

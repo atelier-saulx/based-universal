@@ -17,13 +17,41 @@ std::string string_from_char_code(uint8_t c) {
     return res;
 }
 
-unsigned int Utility::string_hash(const std::string& str, unsigned int hash) {
+int Utility::string_hash(const std::string& str, unsigned int hash) {
     int i = str.length();
     while (i) {
         const char c = str[--i];
         hash = (hash * 33) ^ c;
     }
     return hash;
+}
+
+unsigned long int Utility::hash_env(std::string org,
+                                    std::string project,
+                                    std::string env,
+                                    std::string cluster) {
+    std::vector<std::string> keys{"cluster", "env", "org", "project"};
+    std::vector<std::string> values{cluster, env, org, project};
+
+    int32_t hash = 5381;
+    int32_t hash2 = 52711;
+    std::string fl = "__len:41";
+    hash = string_hash(fl, hash);
+    hash2 = string_hash(fl, hash2);
+
+    for (int i = 0; i < 4; i++) {
+        auto key = keys.at(i);
+        auto value = values.at(i);
+        auto f = key + ":" + value;
+        hash = string_hash(f, hash);
+        hash2 = string_hash(f, hash2);
+    }
+
+    uint32_t f = hash;
+    uint64_t first = ((uint64_t)f * (uint64_t)4096);
+    uint32_t second = hash2;
+    uint64_t res = first + second;
+    return res;
 }
 
 std::string Utility::base36_encode(uint64_t value) {
