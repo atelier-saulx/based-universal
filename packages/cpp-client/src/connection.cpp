@@ -103,7 +103,7 @@ std::pair<std::string, std::string> WsConnection::make_request(std::string url,
 
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, list);
 
-    std::string connect_url = url + "/status";
+    std::string connect_url = url + "/status/" + gen_cache(opts);
     curl_easy_setopt(curl, CURLOPT_URL, connect_url.c_str());
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_function);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buf);
