@@ -211,7 +211,6 @@ void BasedClient::unobserve(int sub_id) {
 
     // if the list is now empty, add request to unobserve to queue
     if (m_obs_to_subs.at(obs_id).empty()) {
-        BASED_LOG("Unobserve request queued for obs_id %llu", obs_id);
         std::vector<uint8_t> msg = Utility::encode_unobserve_message(obs_id);
         m_unobserve_queue.push_back(msg);
         // and remove the obs from the map of active ones.
@@ -321,7 +320,6 @@ void BasedClient::channel_unsubscribe(int sub_id) {
 
     // if the list is now empty, add request to unobserve to queue
     if (m_channel_to_subs.at(obs_id).empty()) {
-        BASED_LOG("Unobserve request queued for obs_id %llu", obs_id);
         std::vector<uint8_t> msg = Utility::encode_unobserve_message(obs_id);
         m_unobserve_queue.push_back(msg);
         // and remove the obs from the map of active ones.
@@ -439,12 +437,8 @@ void BasedClient::on_message(std::string message) {
     int32_t len = Utility::get_payload_len(header);
     int32_t is_deflate = Utility::get_payload_is_deflate(header);
 
-    // BASED_LOG(">> Incoming message: type = %d, len = %d, is_deflate = %d", type, len,
-    // is_deflate);
-
     switch (type) {
         case IncomingType::FUNCTION_DATA: {
-            BASED_LOG("Received FUNCTION_DATA message");
             req_id_t id = (req_id_t)Utility::read_bytes_from_string(message, 4, 3);
 
             if (m_call_callbacks.find(id) != m_call_callbacks.end()) {
@@ -465,7 +459,6 @@ void BasedClient::on_message(std::string message) {
         }
             return;
         case IncomingType::SUBSCRIPTION_DATA: {
-            BASED_LOG("Received SUBSCRIPTION_DATA message");
             obs_id_t obs_id = (obs_id_t)Utility::read_bytes_from_string(message, 4, 8);
             uint64_t checksum = Utility::read_bytes_from_string(message, 12, 8);
 
@@ -476,9 +469,6 @@ void BasedClient::on_message(std::string message) {
                 payload = is_deflate ? Utility::inflate_string(message.substr(start, end))
                                      : message.substr(start, end);
             }
-
-            // BASED_LOG("1>> Incoming message: obs_id = %d, checksum = %d, payload = %s", obs_id,
-            //           checksum, payload.c_str());
 
             m_cache[obs_id].first = payload;
             m_cache[obs_id].second = checksum;
@@ -501,7 +491,6 @@ void BasedClient::on_message(std::string message) {
         }
             return;
         case IncomingType::SUBSCRIPTION_DIFF_DATA: {
-            BASED_LOG("Received SUBSCRIPTION_DIFF_DATA message");
             obs_id_t obs_id = (obs_id_t)Utility::read_bytes_from_string(message, 4, 8);
             uint64_t checksum = Utility::read_bytes_from_string(message, 12, 8);
             uint64_t prev_checksum = Utility::read_bytes_from_string(message, 20, 8);
@@ -537,9 +526,6 @@ void BasedClient::on_message(std::string message) {
                 m_cache[obs_id].second = checksum;
             }
 
-            // BASED_LOG("2>> Incoming message: obs_id = %d, checksum = %d, patched_payload = %s",
-            //           obs_id, checksum, patched_payload.c_str());
-
             if (m_obs_to_subs.find(obs_id) != m_obs_to_subs.end()) {
                 for (auto sub_id : m_obs_to_subs.at(obs_id)) {
                     auto fn = m_sub_callback.at(sub_id);
@@ -558,7 +544,6 @@ void BasedClient::on_message(std::string message) {
 
         } break;
         case IncomingType::GET_DATA: {
-            BASED_LOG("Received GET_DATA message");
             uint64_t obs_id = Utility::read_bytes_from_string(message, 4, 8);
             if (m_obs_to_gets.find(obs_id) != m_obs_to_gets.end() &&
                 m_cache.find(obs_id) != m_cache.end()) {
@@ -571,7 +556,6 @@ void BasedClient::on_message(std::string message) {
             }
         } break;
         case IncomingType::AUTH_DATA: {
-            BASED_LOG("Received AUTH_DATA message");
             int32_t start = 4;
             int32_t end = len + 4;
             std::string payload = "";
@@ -595,7 +579,6 @@ void BasedClient::on_message(std::string message) {
         }
             return;
         case IncomingType::ERROR_DATA: {
-            BASED_LOG("Received ERROR_DATA message");
             int32_t start = 4;
             int32_t end = len + 4;
             std::string payload = "{}";
@@ -669,7 +652,6 @@ void BasedClient::on_message(std::string message) {
         }
             return;
         case IncomingType::CHANNEL_REPUBLISH: {
-            BASED_LOG("received CHANNEL_REPUBLISH message");
             obs_id_t obs_id = Utility::read_bytes_from_string(message, 4, 8);
             // if (m_active_channels.find(obs_id) != m_active_channels.end()) {
             auto obs = m_active_publish_channels.at(obs_id);
@@ -681,14 +663,9 @@ void BasedClient::on_message(std::string message) {
 
             m_channel_sub_queue.push_back(msg);
             drain_queues();
-            // } else {
-            //     BASED_LOG("No obsId?");
-            // }
         }
             return;
         case IncomingType::CHANNEL_MESSAGE: {
-            BASED_LOG("received CHANNEL_MESSAGE message");
-
             auto sub_type = Utility::read_bytes_from_string(message, 4, 1);
             if (sub_type == 0) {
                 obs_id_t obs_id = Utility::read_bytes_from_string(message, 5, 8);

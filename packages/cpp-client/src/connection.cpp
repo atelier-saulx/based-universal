@@ -81,8 +81,6 @@ std::string gen_discovery_url(BasedConnectOpt opts) {
 
     std::string url = "https://" + prefix + affix + ".based.dev";
 
-    BASED_LOG("GENERATED DISCOVERY URL = %s", url.c_str());
-
     return url;
 }
 
@@ -267,7 +265,6 @@ void WsConnection::connect_to_uri(std::string uri) {
     set_handlers(con);
 
     m_endpoint.connect(con);
-    BASED_LOG("Connection created");
 
     return;
 };
@@ -298,7 +295,6 @@ void WsConnection::disconnect() {
 };
 
 void WsConnection::send(std::vector<uint8_t> message) {
-    BASED_LOG("Sending message to websocket");
     websocketpp::lib::error_code ec;
 
     if (m_status != ConnectionStatus::OPEN) throw(std::runtime_error("Connection is not open."));
@@ -355,7 +351,6 @@ void WsConnection::set_handlers(ws_client::connection_ptr con) {
     // arguments (hence the placeholders) these handlers must be set before calling connect, and
     // can't be changed after (i think)
     con->set_open_handler([this](websocketpp::connection_hdl) {
-        BASED_LOG("Received OPEN event");
         m_status = ConnectionStatus::OPEN;
         m_reconnect_attempts = 0;
         if (m_on_open) {
@@ -366,7 +361,6 @@ void WsConnection::set_handlers(ws_client::connection_ptr con) {
     con->set_message_handler([this](websocketpp::connection_hdl hdl, ws_client::message_ptr msg) {
         // here we will pass the message to the decoder, which, based on the header, will
         // call the appropriate callback
-        BASED_LOG("Received MESSAGE event");
 
         std::string payload = msg->get_payload();
         if (m_on_message) {
@@ -375,7 +369,6 @@ void WsConnection::set_handlers(ws_client::connection_ptr con) {
     });
 
     con->set_close_handler([this](websocketpp::connection_hdl) {
-        BASED_LOG("Received CLOSE event");
         if (m_status != ConnectionStatus::TERMINATED_BY_USER) {
             m_status = ConnectionStatus::CLOSED;
             m_reconnect_attempts++;
