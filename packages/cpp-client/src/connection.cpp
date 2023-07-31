@@ -3,7 +3,11 @@
 #include <cmath>
 #include <cstdlib>
 #include <ctime>
+#include <iostream>
 #include <json.hpp>
+#include <sstream>
+#include <vector>
+
 #include "utility.hpp"
 
 #define DEFAULT_CLUSTER_NAME "production"
@@ -19,6 +23,18 @@ const std::map<std::string, int> SERVICES = {{"@based/env-hub", 0},
 ///////////////////////////////////////////////////
 //////////////// Helper functions /////////////////
 ///////////////////////////////////////////////////
+
+std::vector<std::string> split_on_char(const std::string& s, char delim) {
+    std::vector<std::string> result;
+    std::stringstream ss(s);
+    std::string item;
+
+    while (getline(ss, item, delim)) {
+        result.push_back(item);
+    }
+
+    return result;
+}
 
 size_t write_function(void* contents, size_t size, size_t nmemb, void* userp) {
     ((std::string*)userp)->append((char*)contents, size * nmemb);
@@ -59,8 +75,6 @@ std::string gen_discovery_url(BasedConnectOpt opts) {
     }
 
     auto hashed_env = Utility::hash_env(opts.org, opts.project, opts.env, opts.cluster);
-
-    BASED_LOG("hased env before based 36 = %lu", hashed_env);
 
     std::string prefix = Utility::base36_encode(hashed_env);
     std::string affix = "-status";
@@ -134,16 +148,18 @@ std::pair<std::string, std::string> WsConnection::make_request(std::string url,
 
     std::string decoded_value = Utility::decode(encoded_value, encode_chars);
 
-    auto idx = decoded_value.rfind(",");
+    auto result = split_on_char(decoded_value, ',');
+    std::vector<std::pair<std::string, std::string>> pairs;
 
-    std::string access_key = Utility::encodeURIComponent(decoded_value.substr(idx + 1));
-    std::string final_url = decoded_value.substr(0, idx);
+    for (int i = 0; i < result.size() / 2; i++) {
+        auto hub = result.at(i);
+        auto key = Utility::encodeURIComponent(result.at(i + (result.size() / 2)));
+        pairs.push_back((std::make_pair(hub, key)));
+    }
 
     curl_easy_cleanup(curl);
 
-    std::pair<std::string, std::string> result_pair(final_url, access_key);
-
-    return result_pair;
+    return pairs.at(std::rand() % (pairs.size()));
 }
 
 //////////////////////////////////////////////////////////////////////////
