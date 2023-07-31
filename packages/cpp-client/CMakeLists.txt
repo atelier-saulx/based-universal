@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.13.0)
 
-project(universal-based VERSION 2.0.0)
+project(universal-based VERSION 2.1.0)
 
 if(NOT DEFINED ARCH_FOLDER)
   message(FATAL_ERROR "ARCH_FOLDER is not set, I don't know where to look for libraries")
