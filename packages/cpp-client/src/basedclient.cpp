@@ -571,7 +571,7 @@ void BasedClient::on_message(std::string message) {
             }
             m_auth_in_progress = false;
             if (m_auth_callback) {
-                m_auth_callback(payload.c_str());
+                m_auth_callback(m_auth_state.c_str());
                 // we remove the callback because we don't want it to fire again if the server
                 // updates the client's auth state
                 m_auth_callback = NULL;
