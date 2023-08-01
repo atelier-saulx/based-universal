@@ -27,7 +27,7 @@ xcodebuild -create-xcframework \
     -framework darwin/Release/based.framework \
     -output Based.xcframework
 echo zipping...
-zip -q based-universal-v${PROJECT_VERSION}-xcframework.zip Based.xcframework
+zip -rq based-universal-v${PROJECT_VERSION}-xcframework.zip Based.xcframework
 
 cd ${ANDROID_DIR}
 
@@ -48,7 +48,7 @@ done
 
 cd ${SCRIPT_DIR}/build/android
 echo zipping...
-zip -q based-universal-v${PROJECT_VERSION}-android.zip release
+zip -rq based-universal-v${PROJECT_VERSION}-android.zip release
 
 
 echo Creating linux release...
