@@ -1,3 +1,6 @@
+#!/bin/bash
+
+
 while getopts t: flag
 do
     case "${flag}" in
@@ -16,7 +19,7 @@ ANDROID_API_VERSION=33
 
 
 for TARGET in ${TARGETS}
-do    
+do
     # Check for user defined targets
     if [ ! -z ${USER_TARGETS+x} ]; # Is this var defined?
         then
@@ -74,3 +77,20 @@ do
 
     cd -
 done
+
+# Linux
+
+if [ ! -z ${USER_TARGETS+x} ];
+    then
+        if [[ ! " ${USER_TARGETS[*]} " =~ " linux " ]];
+            then
+                echo "Skipping linux";
+                exit;
+            else echo "Building linux"
+        fi
+fi
+
+mkdir -p ${SCRIPT_DIR}/build/linux
+docker build -t based-build .
+docker run -v "$PWD/build/linux":/build/out based-build
+cp ${SCRIPT_DIR}/include/based.h ${SCRIPT_DIR}/build/linux/based.h
