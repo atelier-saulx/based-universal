@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "declaration": true,
+    "lib": ["esnext"],
+    "module": "commonjs",
+    "outDir": "./dist",
+    "rootDir": "./lib",
+    "strict": true,
+    "target": "es6",
+    "types": ["node"],
+    "typeRoots": ["node_modules/@types"],
+    "jsx": "react",
+    "moduleResolution": "node",
+    "sourceMap": true,
+    "removeComments": false,
+    "noImplicitAny": false,
+    "skipLibCheck": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true
+  }
+}

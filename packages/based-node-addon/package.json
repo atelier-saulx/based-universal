@@ -1,0 +1,35 @@
+{
+  "name": "based-node-addon",
+  "version": "1.0.0",
+  "description": "",
+  "main": "lib/index.js",
+  "scripts": {
+    "pretest": "rm -rf dist && tsc",
+    "test": "ava --color --node-arguments='--expose-gc' --timeout 3m --verbose"
+  },
+  "gypfile": true,
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "node-addon-api": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^7.0.22",
+    "typescript": "^4.3.5",
+    "@saulx/eslint-config": "^1.1.1",
+    "@saulx/prettier-config": "^1.0.0"
+  },
+  "prettier": "@saulx/prettier-config",
+  "ava": {
+    "files": [
+      "test/*.ts"
+    ],
+    "concurrency": 1,
+    "extensions": [
+      "ts"
+    ],
+    "require": [
+      "ts-node/register"
+    ]
+  }
+}
