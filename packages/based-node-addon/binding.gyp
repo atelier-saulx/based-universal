@@ -3,8 +3,15 @@
     {
       'target_name': 'based-node-addon',
       'sources': [ 'src/based.cc' ],
-      'include_dirs': ["<(module_root_dir)", "<!@(node -p \"require('node-addon-api').include\")"],
-      # 'libraries': [ "-Wl,-rpath,<(module_root_dir)", '-lbased', '-L<(module_root_dir)'],
+      'include_dirs': [
+          "<(module_root_dir)/based-lib",
+          "<!@(node -p \"require('node-addon-api').include\")"
+      ],
+      'libraries': [
+          "-Wl,-rpath,<(module_root_dir)/based-lib",
+          '-lbased',
+          '-L<(module_root_dir)/based-lib'
+      ],
       'dependencies': ["<!(node -p \"require('node-addon-api').gyp\")"],
       'cflags!': [ '-fno-exceptions' ],
       'cflags_cc!': [ '-fno-exceptions' ],

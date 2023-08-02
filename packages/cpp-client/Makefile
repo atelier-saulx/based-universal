@@ -14,7 +14,6 @@ LDLIBS = -lz -lcurl
 
 ODIR=obj
 SRCDIR=src
-DISTDIR=linux
 
 LIBNAME = libbased
 
@@ -22,9 +21,11 @@ uname_S := $(shell uname -s)
 
 ifeq ($(uname_S),Linux)
 	TARGET = $(LIBNAME).so
+	DISTDIR=linux
 endif
 ifeq ($(uname_S),Darwin) # macOS
 	TARGET = $(LIBNAME).dylib
+	DISTDIR=darwin
 endif
 ifndef TARGET
 $(error TARGET is not set)
@@ -58,8 +59,8 @@ example: $(patsubst %,$(ODIR)/%,$(OBJS))
 	$(CXX) example/example.cpp -o $@ $^ $(LDIR) $(CXXFLAGS) $(LDFLAGS) $(LDLIBS)
 
 $(TARGET): $(patsubst %,$(ODIR)/%,$(OBJS))
-	+@[ -d $(DISTDIR) ] || mkdir -p $(DISTDIR)
-	$(CXX) -o $(DISTDIR)/$@ -shared -fPIC -g $^ $(LDFLAGS) $(LDLIBS) -fvisibility=hidden
+	# +@[ -d $(DISTDIR) ] || mkdir -p $(DISTDIR)
+	$(CXX) -o $@ -shared -fPIC -g $^ $(LDFLAGS) $(LDLIBS) -fvisibility=hidden
 
 linked-example:
 	$(CXX) example/example.cpp -o $@ $(CXXFLAGS) -Iinclude -L$(DISTDIR) -lbased

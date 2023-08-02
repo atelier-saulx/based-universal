@@ -3,12 +3,12 @@ import { BasedQuery } from './Query'
 import { AuthState, BasedOpts, Settings } from './types'
 
 const {
-  native_new_client,
-  native_connect,
-  native_connect_to_url,
-  native_disconnect,
-  native_call,
-  native_set_authstate,
+  NewClient,
+  Connect,
+  ConnectToUrl,
+  Disconnect,
+  Call,
+  SetAuthstate,
 } = require('../build/Release/based-node-addon')
 
 // export = {
@@ -25,7 +25,7 @@ export class BasedClient extends Emitter {
   constructor(opts?: BasedOpts) {
     super()
 
-    this.clientId = native_new_client()
+    this.clientId = NewClient()
 
     if (opts && Object.keys(opts).length > 0) {
       this.opts = opts
@@ -84,29 +84,23 @@ export class BasedClient extends Emitter {
       let url: string = ''
       if (typeof opts.url === 'string') {
         url = opts.url
-      } else if (opts.url instanceof Promise) {
-        url = await opts.url
+      } else if (
+        opts.url instanceof Promise ||
+        typeof opts.url === 'function'
+      ) {
+        url = await opts.url()
       } else {
-        throw new Error('opts.url is wrong type')
+        throw new Error(`opts.url is wrong type: ${typeof opts.url}`)
       }
-      native_connect_to_url(this.clientId, url)
+      ConnectToUrl(this.clientId, url)
     } else {
       const { cluster, org, project, env, name, key, optionalKey } = opts
-      native_connect(
-        this.clientId,
-        cluster,
-        org,
-        project,
-        env,
-        name,
-        key,
-        optionalKey
-      )
+      Connect(this.clientId, cluster, org, project, env, name, key, optionalKey)
     }
   }
 
   public disconnect() {
-    native_disconnect(this.clientId)
+    Disconnect(this.clientId)
   }
 
   public async destroy() {
@@ -134,7 +128,7 @@ export class BasedClient extends Emitter {
   // -------- Function
   call(name: string, payload?: any): Promise<any> {
     return new Promise((resolve, reject) => {
-      native_call(this.clientId, name, payload, (data, err, reqId) => {
+      Call(this.clientId, name, payload, (data, err, reqId) => {
         if (data) resolve(data)
         else if (err) reject(err)
       })
@@ -146,7 +140,7 @@ export class BasedClient extends Emitter {
   setAuthState(authState: AuthState): Promise<AuthState> {
     if (typeof authState === 'object') {
       return new Promise((resolve) => {
-        native_set_authstate(this.clientId, authState, resolve)
+        SetAuthstate(this.clientId, authState, resolve)
       })
     } else {
       throw new Error('Invalid auth() arguments')
