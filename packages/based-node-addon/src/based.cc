@@ -89,6 +89,19 @@ Napi::Value ConnectToUrl(const Napi::CallbackInfo& info) {
     return env.Undefined();
 }
 
+Napi::Value Disconnect(const Napi::CallbackInfo& info) {
+    /*
+      Disconnect: (clientId: number) => void
+    */
+    Napi::Env env = info.Env();
+
+    int clientId = info[0].As<Napi::Number>().Int32Value();
+
+    Based__disconnect(clientId);
+
+    return env.Undefined();
+}
+
 Napi::Value Observe(const Napi::CallbackInfo& info) {
     /*
     Observe: (
@@ -274,6 +287,8 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
     exports.Set(Napi::String::New(env, "Unobserve"), Napi::Function::New(env, Unobserve));
     exports.Set(Napi::String::New(env, "Get"), Napi::Function::New(env, Get));
     exports.Set(Napi::String::New(env, "Call"), Napi::Function::New(env, Call));
+    exports.Set(Napi::String::New(env, "Disconnect"),
+                Napi::Function::New(env, Disconnect));
     return exports;
 }
 

@@ -3,6 +3,7 @@ import {
   ObserveErrorListener,
   CloseObserve,
 } from './types'
+import { convertDataToBasedError } from './types/error'
 import { BasedClient } from '.'
 
 function observeListenerToNative(
@@ -13,7 +14,7 @@ function observeListenerToNative(
     if (data) {
       onData(JSON.parse(data), checksum || 0)
     } else if (err && onError) {
-      onError(JSON.parse(err))
+      onError(convertDataToBasedError(JSON.parse(err)))
     }
   }
 }
@@ -66,7 +67,7 @@ export class BasedQuery<P = any, K = any> {
     return new Promise((resolve, reject) => {
       const cb = (data, err, subId) => {
         if (data) resolve(JSON.parse(data))
-        else if (err) reject(JSON.parse(err))
+        else if (err) reject(convertDataToBasedError(JSON.parse(err)))
       }
       Get(this.client.clientId, this.name, JSON.stringify(this.query), cb)
     })

@@ -2,6 +2,7 @@ import { EventEmitter } from 'events'
 import Emitter from './Emitter'
 import { BasedQuery } from './Query'
 import { AuthState, BasedOpts, Settings } from './types'
+import { convertDataToBasedError } from './types/error'
 
 const { NewClient, Connect, ConnectToUrl, Disconnect, Call, SetAuthState } =
   require('../build/Release/based-node-addon') as {
@@ -161,7 +162,7 @@ export class BasedClient extends Emitter {
     return new Promise((resolve, reject) => {
       Call(this.clientId, name, JSON.stringify(payload), (data, err, reqId) => {
         if (data) resolve(JSON.parse(data))
-        else if (err) reject(JSON.parse(err))
+        else if (err) reject(convertDataToBasedError(JSON.parse(err)))
       })
     })
   }
