@@ -103,15 +103,11 @@ Napi::Value Observe(const Napi::CallbackInfo& info) {
 
     int clientId = info[0].As<Napi::Number>().Int32Value();
     std::string name = info[1].As<Napi::String>().Utf8Value();
-    std::string payload;
+    std::string payload = "";
     if (info[2].IsString()) {
         payload = info[2].As<Napi::String>().Utf8Value();
     } else if (info[2].IsNumber()) {
         payload = info[2].As<Napi::Number>().ToString();
-    } else {
-        Napi::TypeError::New(env, "Wrong payload, expected string")
-            .ThrowAsJavaScriptException();
-        return env.Null();
     }
 
     int id = Based__observe(clientId, name.data(), payload.data(), observeCb);
@@ -183,7 +179,7 @@ Napi::Value Get(const Napi::CallbackInfo& info) {
             .ThrowAsJavaScriptException();
         return env.Null();
     }
-    if (!info[2].IsString()) {
+    if (!info[2].IsString() && !info[2].IsNull() && !info[2].IsUndefined()) {
         Napi::TypeError::New(
             env, "Expected string as third argument (use stringify if passing object)")
             .ThrowAsJavaScriptException();
@@ -197,7 +193,7 @@ Napi::Value Get(const Napi::CallbackInfo& info) {
 
     int clientId = info[0].As<Napi::Number>().Int32Value();
     std::string name = info[1].As<Napi::String>().Utf8Value();
-    std::string payload;
+    std::string payload = "";
     if (info[2].IsString()) {
         payload = info[2].As<Napi::String>().Utf8Value();
     } else if (info[2].IsNumber()) {
@@ -212,6 +208,64 @@ Napi::Value Get(const Napi::CallbackInfo& info) {
     return env.Undefined();
 }
 
+Napi::Value Call(const Napi::CallbackInfo& info) {
+    /**
+    Call: (
+        clientId: number,
+        name: string,
+        payload: any,
+        cb: (data: any, err: any, reqId: number) => void
+    ) => void
+     */
+
+    Napi::Env env = info.Env();
+
+    if (info.Length() != 4) {
+        Napi::TypeError::New(env, "Wrong number of arguments")
+            .ThrowAsJavaScriptException();
+        return env.Null();
+    }
+
+    if (!info[0].IsNumber()) {
+        Napi::TypeError::New(env, "Expected number as first argument")
+            .ThrowAsJavaScriptException();
+        return env.Null();
+    }
+    if (!info[1].IsString()) {
+        Napi::TypeError::New(env, "Expected string as second argument")
+            .ThrowAsJavaScriptException();
+        return env.Null();
+    }
+    if (!info[2].IsString()) {
+        Napi::TypeError::New(
+            env, "Expected string as third argument (use stringify if passing object)")
+            .ThrowAsJavaScriptException();
+        return env.Null();
+    }
+    if (!info[3].IsFunction()) {
+        Napi::TypeError::New(env, "Expected function as fourth argument")
+            .ThrowAsJavaScriptException();
+        return env.Null();
+    }
+
+    int clientId = info[0].As<Napi::Number>().Int32Value();
+    std::string name = info[1].As<Napi::String>().Utf8Value();
+    std::string payload = "";
+    if (info[2].IsString()) {
+        payload = info[2].As<Napi::String>().Utf8Value();
+    } else if (info[2].IsNumber()) {
+        payload = info[2].As<Napi::Number>().ToString();
+    }
+
+    int id = Based__call(clientId, name.data(), payload.data(), functionCb);
+
+    auto fn = info[3].As<Napi::Function>();
+
+    fnStore[id] = Napi::ThreadSafeFunction::New(env, fn, "callback", 0, 2);
+
+    return env.Undefined();
+}
+
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
     exports.Set(Napi::String::New(env, "NewClient"), Napi::Function::New(env, NewClient));
     exports.Set(Napi::String::New(env, "ConnectToUrl"),
@@ -219,6 +273,7 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
     exports.Set(Napi::String::New(env, "Observe"), Napi::Function::New(env, Observe));
     exports.Set(Napi::String::New(env, "Unobserve"), Napi::Function::New(env, Unobserve));
     exports.Set(Napi::String::New(env, "Get"), Napi::Function::New(env, Get));
+    exports.Set(Napi::String::New(env, "Call"), Napi::Function::New(env, Call));
     return exports;
 }
 

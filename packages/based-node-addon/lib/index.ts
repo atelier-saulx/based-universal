@@ -159,9 +159,9 @@ export class BasedClient extends Emitter {
   // -------- Function
   call(name: string, payload?: any): Promise<any> {
     return new Promise((resolve, reject) => {
-      Call(this.clientId, name, payload, (data, err, reqId) => {
-        if (data) resolve(data)
-        else if (err) reject(err)
+      Call(this.clientId, name, JSON.stringify(payload), (data, err, reqId) => {
+        if (data) resolve(JSON.parse(data))
+        else if (err) reject(JSON.parse(err))
       })
     })
   }
