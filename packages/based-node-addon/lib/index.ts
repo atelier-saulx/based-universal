@@ -1,31 +1,52 @@
+import { EventEmitter } from 'events'
 import Emitter from './Emitter'
 import { BasedQuery } from './Query'
 import { AuthState, BasedOpts, Settings } from './types'
 
-const {
-  NewClient,
-  Connect,
-  ConnectToUrl,
-  Disconnect,
-  Call,
-  SetAuthstate,
-} = require('../build/Release/based-node-addon')
-
-// export = {
-//   GetService: addon.GetService,
-//   Connect: addon.Connect,
-//   Function: addon.Function,
-//   ConnectToUrl: addon.ConnectToUrl,
-//   Observe: addon.Observe,
-//   Unobserve: addon.Unobserve,
-//   Get: addon.Get,
-// };
+const { NewClient, Connect, ConnectToUrl, Disconnect, Call, SetAuthState } =
+  require('../build/Release/based-node-addon') as {
+    NewClient: () => number
+    Connect: (
+      clientId: number,
+      cluster: string,
+      org: string,
+      project: string,
+      env: string,
+      name?: string,
+      key?: string,
+      optionalKey?: boolean
+    ) => void
+    ConnectToUrl: (clientId: number, url: string) => void
+    Disconnect: (clientId: number) => void
+    Call: (
+      clientId: number,
+      name: string,
+      payload: any,
+      cb: (data: any, err: any, reqId: number) => void
+    ) => void
+    SetAuthState: (
+      clientId: number,
+      state: AuthState,
+      cb: (state: AuthState) => void
+    ) => void
+  }
 
 export class BasedClient extends Emitter {
   constructor(opts?: BasedOpts) {
     super()
 
     this.clientId = NewClient()
+    this.keepAliveEmtter = new EventEmitter()
+
+    // is this correct? or even necessary? check
+    this.keepAliveEmtter.on('stay-alive', async () => {
+      const stayAlive = () => {
+        if (!this.isDestroyed) setImmediate(stayAlive)
+      }
+      stayAlive()
+    })
+
+    this.keepAliveEmtter.emit('stay-alive')
 
     if (opts && Object.keys(opts).length > 0) {
       this.opts = opts
@@ -34,6 +55,7 @@ export class BasedClient extends Emitter {
   }
 
   clientId: number
+  keepAliveEmtter: EventEmitter
 
   // --------- Connection State
   // @ts-ignore TODO: why
@@ -84,10 +106,7 @@ export class BasedClient extends Emitter {
       let url: string = ''
       if (typeof opts.url === 'string') {
         url = opts.url
-      } else if (
-        opts.url instanceof Promise ||
-        typeof opts.url === 'function'
-      ) {
+      } else if (typeof opts.url === 'function') {
         url = await opts.url()
       } else {
         throw new Error(`opts.url is wrong type: ${typeof opts.url}`)
@@ -95,7 +114,18 @@ export class BasedClient extends Emitter {
       ConnectToUrl(this.clientId, url)
     } else {
       const { cluster, org, project, env, name, key, optionalKey } = opts
-      Connect(this.clientId, cluster, org, project, env, name, key, optionalKey)
+      if (!org || !project || !env) throw new Error('no org/project/env')
+
+      Connect(
+        this.clientId,
+        cluster || 'production',
+        org,
+        project,
+        env,
+        name,
+        key,
+        optionalKey
+      )
     }
   }
 
@@ -140,7 +170,7 @@ export class BasedClient extends Emitter {
   setAuthState(authState: AuthState): Promise<AuthState> {
     if (typeof authState === 'object') {
       return new Promise((resolve) => {
-        SetAuthstate(this.clientId, authState, resolve)
+        SetAuthState(this.clientId, authState, resolve)
       })
     } else {
       throw new Error('Invalid auth() arguments')

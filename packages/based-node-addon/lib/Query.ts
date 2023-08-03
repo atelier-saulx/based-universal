@@ -5,11 +5,22 @@ import {
 } from './types'
 import { BasedClient } from '.'
 
-const {
-  native_observe,
-  native_unobserve,
-  native_get,
-} = require('../build/Release/based-node-addon')
+const { Observe, Unobserve, Get } =
+  require('../build/Release/based-node-addon') as {
+    Observe: (
+      clientId: number,
+      name: string,
+      payload: any,
+      cb: (data: any, checksum: number, err: any, obsId: number) => void
+    ) => number
+    Unobserve: (clientId: number, subId: number) => void
+    Get: (
+      clientId: number,
+      name: string,
+      payload: any,
+      cb: (data: any, err: any, subId: any) => void
+    ) => void
+  }
 
 export class BasedQuery<P = any, K = any> {
   public query: P
@@ -26,21 +37,16 @@ export class BasedQuery<P = any, K = any> {
     onData: ObserveDataListener<K>,
     onError?: ObserveErrorListener
   ): CloseObserve {
-    const subId = native_observe(
-      this.client.clientId,
-      this.name,
-      this.query,
-      onData
-    )
+    const subId = Observe(this.client.clientId, this.name, this.query, onData)
 
     return () => {
-      native_unobserve(this.client.clientId, subId)
+      Unobserve(this.client.clientId, subId)
     }
   }
 
   async get(): Promise<K> {
     return new Promise((resolve, reject) => {
-      native_get(this.client.clientId, this.name, this.query, resolve)
+      Get(this.client.clientId, this.name, this.query, resolve)
     })
   }
 }
