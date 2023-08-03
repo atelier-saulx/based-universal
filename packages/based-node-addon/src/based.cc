@@ -67,7 +67,6 @@ void observeCb(const char* data, uint64_t checksum, const char* error, int id) {
     };
     ObserveCallbackData* d = new ObserveCallbackData{data, checksum, error, id};
 
-    std::cout << "callNapiObservableFunction, id: " << id << std::endl;
     obsStore.at(id).BlockingCall(d, callback);
 }
 

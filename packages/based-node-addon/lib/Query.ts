@@ -11,7 +11,7 @@ function observeListenerToNative(
 ): (data: any, checksum: number, err: any, obsId: number) => void {
   return (data: any, checksum: number, err: any, obsId: number) => {
     if (data) {
-      onData(data, checksum || 0)
+      onData(JSON.parse(data), checksum || 0)
     } else if (err && onError) {
       onError(err)
     }
