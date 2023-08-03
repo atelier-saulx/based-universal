@@ -13,7 +13,7 @@ function observeListenerToNative(
     if (data) {
       onData(JSON.parse(data), checksum || 0)
     } else if (err && onError) {
-      onError(err)
+      onError(JSON.parse(err))
     }
   }
 }
@@ -64,7 +64,11 @@ export class BasedQuery<P = any, K = any> {
 
   async get(): Promise<K> {
     return new Promise((resolve, reject) => {
-      Get(this.client.clientId, this.name, this.query, resolve)
+      const cb = (data, err, subId) => {
+        if (data) resolve(JSON.parse(data))
+        else if (err) reject(JSON.parse(err))
+      }
+      Get(this.client.clientId, this.name, JSON.stringify(this.query), cb)
     })
   }
 }
