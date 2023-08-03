@@ -1,5 +1,7 @@
 #include "based.h"
 #include <napi.h>
+#include <iostream>
+#include <map>
 
 /**
   NewClient,
@@ -11,6 +13,64 @@
 } = require('../build/Release/based-node-addon')
 */
 
+struct FunctionCallbackData {
+    std::string data;
+    std::string error;
+    int id;
+};
+struct ObserveCallbackData {
+    std::string data;
+    uint64_t checksum;
+    std::string error;
+    int id;
+};
+
+std::map<int, Napi::ThreadSafeFunction> fnStore;
+std::map<int, Napi::ThreadSafeFunction> obsStore;
+
+void functionCb(const char* data, const char* error, int id) {
+    if (fnStore.find(id) == fnStore.end()) {
+        return;
+    }
+    auto callback = [](Napi::Env env, Napi::Function jsCallback,
+                       FunctionCallbackData* data) {
+        // Transform native data into JS data, passing it to the provided
+        // `jsCallback` -- the TSFN's JavaScript function.
+
+        jsCallback.Call({Napi::String::New(env, data->data),
+                         Napi::String::New(env, data->error),
+                         Napi::Number::New(env, data->id)});
+
+        delete data;
+    };
+    FunctionCallbackData* d = new FunctionCallbackData{data, error, id};
+
+    fnStore.at(id).Napi::ThreadSafeFunction::BlockingCall(d, callback);
+    fnStore.at(id).Release();
+    fnStore.erase(id);
+}
+
+void observeCb(const char* data, uint64_t checksum, const char* error, int id) {
+    if (obsStore.find(id) == obsStore.end()) {
+        return;
+    }
+    auto callback = [](Napi::Env env, Napi::Function jsCallback,
+                       ObserveCallbackData* data) {
+        // Transform native data into JS data, passing it to the provided
+        // `jsCallback` -- the TSFN's JavaScript function.
+
+        jsCallback.Call(
+            {Napi::String::New(env, data->data), Napi::Number::New(env, data->checksum),
+             Napi::String::New(env, data->error), Napi::Number::New(env, data->id)});
+
+        delete data;
+    };
+    ObserveCallbackData* d = new ObserveCallbackData{data, checksum, error, id};
+
+    std::cout << "callNapiObservableFunction, id: " << id << std::endl;
+    obsStore.at(id).BlockingCall(d, callback);
+}
+
 Napi::Value NewClient(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
 
@@ -19,8 +79,91 @@ Napi::Value NewClient(const Napi::CallbackInfo& info) {
     return Napi::Number::New(env, clientId);
 }
 
+Napi::Value ConnectToUrl(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+
+    int clientId = info[0].As<Napi::Number>().Int32Value();
+    std::string url = info[1].As<Napi::String>().Utf8Value();
+
+    Based__connect_to_url(clientId, (char*)url.c_str());
+
+    return env.Undefined();
+}
+
+Napi::Value Observe(const Napi::CallbackInfo& info) {
+    /*
+    Observe: (
+      clientId: number,
+      name: string,
+      payload: any,
+      cb: (data: any, checksum: number, err: any, obsId: number) => void
+    ) => number
+    */
+
+    Napi::Env env = info.Env();
+
+    int clientId = info[0].As<Napi::Number>().Int32Value();
+    std::string name = info[1].As<Napi::String>().Utf8Value();
+    std::string payload;
+    if (info[2].IsObject()) {
+        payload = info[2].As<Napi::Object>().ToString();  // TODO: check this
+    } else if (info[2].IsString()) {
+        payload = info[2].As<Napi::String>().Utf8Value();
+    } else if (info[2].IsNumber()) {
+        payload = info[2].As<Napi::Number>().ToString();
+    } else {
+        Napi::TypeError::New(env, "Wrong payload").ThrowAsJavaScriptException();
+        return env.Null();
+    }
+
+    int id = Based__observe(clientId, name.data(), payload.data(), observeCb);
+
+    auto fn = info[3].As<Napi::Function>();
+    obsStore[id] = Napi::ThreadSafeFunction::New(env, fn, "callback-observe", 0, 2);
+
+    return Napi::Number::New(env, id);
+}
+
+Napi::Value Unobserve(const Napi::CallbackInfo& info) {
+    /*
+        Unobserve: (clientId: number, subId: number) => void
+    */
+
+    Napi::Env env = info.Env();
+
+    if (info.Length() < 2) {
+        Napi::TypeError::New(env, "Wrong number of arguments")
+            .ThrowAsJavaScriptException();
+        return env.Null();
+    }
+
+    if (!info[0].IsNumber()) {
+        Napi::TypeError::New(env, "Expected number as first argument")
+            .ThrowAsJavaScriptException();
+        return env.Null();
+    }
+    if (!info[1].IsNumber()) {
+        Napi::TypeError::New(env, "Expected number as second argument")
+            .ThrowAsJavaScriptException();
+        return env.Null();
+    }
+    int clientId = info[0].As<Napi::Number>().Int32Value();
+    int subId = info[1].As<Napi::Number>().Int32Value();
+
+    Based__unobserve(clientId, subId);
+
+    obsStore.at(subId).Release();
+    obsStore.erase(subId);
+
+    return env.Undefined();
+}
+
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
     exports.Set(Napi::String::New(env, "NewClient"), Napi::Function::New(env, NewClient));
+    exports.Set(Napi::String::New(env, "ConnectToUrl"),
+                Napi::Function::New(env, ConnectToUrl));
+    exports.Set(Napi::String::New(env, "Observe"), Napi::Function::New(env, Observe));
+    exports.Set(Napi::String::New(env, "Unobserve"), Napi::Function::New(env, Unobserve));
     return exports;
 }
 

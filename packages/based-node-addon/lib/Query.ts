@@ -5,6 +5,19 @@ import {
 } from './types'
 import { BasedClient } from '.'
 
+function observeListenerToNative(
+  onData: ObserveDataListener,
+  onError?: ObserveErrorListener
+): (data: any, checksum: number, err: any, obsId: number) => void {
+  return (data: any, checksum: number, err: any, obsId: number) => {
+    if (data) {
+      onData(data, checksum || 0)
+    } else if (err && onError) {
+      onError(err)
+    }
+  }
+}
+
 const { Observe, Unobserve, Get } =
   require('../build/Release/based-node-addon') as {
     Observe: (
@@ -37,7 +50,12 @@ export class BasedQuery<P = any, K = any> {
     onData: ObserveDataListener<K>,
     onError?: ObserveErrorListener
   ): CloseObserve {
-    const subId = Observe(this.client.clientId, this.name, this.query, onData)
+    const subId = Observe(
+      this.client.clientId,
+      this.name,
+      JSON.stringify(this.query),
+      observeListenerToNative(onData, onError)
+    )
 
     return () => {
       Unobserve(this.client.clientId, subId)

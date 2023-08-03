@@ -36,17 +36,17 @@ export class BasedClient extends Emitter {
     super()
 
     this.clientId = NewClient()
-    this.keepAliveEmtter = new EventEmitter()
 
     // is this correct? or even necessary? check
-    this.keepAliveEmtter.on('stay-alive', async () => {
-      const stayAlive = () => {
-        if (!this.isDestroyed) setImmediate(stayAlive)
-      }
-      stayAlive()
-    })
+    const refreshTimer = () => {
+      this.keepAliveTimer = setTimeout(() => {
+        refreshTimer()
+      }, 2147483647)
+    }
 
-    this.keepAliveEmtter.emit('stay-alive')
+    this.keepAliveTimer = setTimeout(() => {
+      refreshTimer()
+    }, 2147483647)
 
     if (opts && Object.keys(opts).length > 0) {
       this.opts = opts
@@ -55,7 +55,7 @@ export class BasedClient extends Emitter {
   }
 
   clientId: number
-  keepAliveEmtter: EventEmitter
+  keepAliveTimer: NodeJS.Timer
 
   // --------- Connection State
   // @ts-ignore TODO: why
@@ -131,6 +131,7 @@ export class BasedClient extends Emitter {
 
   public disconnect() {
     Disconnect(this.clientId)
+    clearTimeout(this.keepAliveTimer)
   }
 
   public async destroy() {
