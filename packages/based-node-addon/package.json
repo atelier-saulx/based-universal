@@ -6,7 +6,8 @@
   "scripts": {
     "watch": "tsc -w",
     "build": "tsc",
-    "test": "ava --color --node-arguments='--expose-gc' --timeout 3m --verbose"
+    "test": "ava --color --node-arguments='--expose-gc' --timeout 3m --verbose",
+    "link-libbased": "./scripts/link-libbased.sh"
   },
   "gypfile": true,
   "author": "",

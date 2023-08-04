@@ -94,6 +94,15 @@ Napi::Value NewClient(const Napi::CallbackInfo& info) {
     return Napi::Number::New(env, clientId);
 }
 
+Napi::Value DeleteClient(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+
+    int clientId = info[0].As<Napi::Number>().Int32Value();
+    Based__delete_client(clientId);
+
+    return env.Undefined();
+}
+
 Napi::Value ConnectToUrl(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
 
@@ -265,12 +274,12 @@ Napi::Value Call(const Napi::CallbackInfo& info) {
             .ThrowAsJavaScriptException();
         return env.Null();
     }
-    if (!info[2].IsString()) {
-        Napi::TypeError::New(
-            env, "Expected string as third argument (use stringify if passing object)")
-            .ThrowAsJavaScriptException();
-        return env.Null();
-    }
+    // if (!info[2].IsString()) {
+    //     Napi::TypeError::New(
+    //         env, "Expected string as third argument (use stringify if passing object)")
+    //         .ThrowAsJavaScriptException();
+    //     return env.Null();
+    // }
     if (!info[3].IsFunction()) {
         Napi::TypeError::New(env, "Expected function as fourth argument")
             .ThrowAsJavaScriptException();
@@ -338,6 +347,15 @@ Napi::Value SetAuthState(const Napi::CallbackInfo& info) {
     return env.Undefined();
 }
 
+Napi::Value GetAuthState(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+
+    int clientId = info[0].As<Napi::Number>().Int32Value();
+    auto state = Based__get_auth_state(clientId);
+
+    return Napi::String::New(env, state);
+}
+
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
     // clang-format off
     exports.Set(Napi::String::New(env, "NewClient"), Napi::Function::New(env, NewClient));
@@ -348,6 +366,8 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
     exports.Set(Napi::String::New(env, "Call"), Napi::Function::New(env, Call));
     exports.Set(Napi::String::New(env, "SetAuthState"), Napi::Function::New(env, SetAuthState));
     exports.Set(Napi::String::New(env, "Disconnect"), Napi::Function::New(env, Disconnect));
+    exports.Set(Napi::String::New(env, "DeleteClient"), Napi::Function::New(env, DeleteClient));
+    exports.Set(Napi::String::New(env, "GetAuthState"), Napi::Function::New(env, GetAuthState));
     // clang-format on
     return exports;
 }

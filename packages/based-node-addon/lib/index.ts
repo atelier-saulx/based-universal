@@ -4,33 +4,43 @@ import { BasedQuery } from './Query'
 import { AuthState, BasedOpts, Settings } from './types'
 import { convertDataToBasedError } from './types/error'
 
-const { NewClient, Connect, ConnectToUrl, Disconnect, Call, SetAuthState } =
-  require('../build/Release/based-node-addon') as {
-    NewClient: () => number
-    Connect: (
-      clientId: number,
-      cluster: string,
-      org: string,
-      project: string,
-      env: string,
-      name?: string,
-      key?: string,
-      optionalKey?: boolean
-    ) => void
-    ConnectToUrl: (clientId: number, url: string) => void
-    Disconnect: (clientId: number) => void
-    Call: (
-      clientId: number,
-      name: string,
-      payload: any,
-      cb: (data: any, err: any, reqId: number) => void
-    ) => void
-    SetAuthState: (
-      clientId: number,
-      state: string,
-      cb: (state: string) => void
-    ) => void
-  }
+const {
+  NewClient,
+  Connect,
+  ConnectToUrl,
+  Disconnect,
+  Call,
+  SetAuthState,
+  DeleteClient,
+  GetAuthState,
+} = require('../build/Release/based-node-addon') as {
+  NewClient: () => number
+  Connect: (
+    clientId: number,
+    cluster: string,
+    org: string,
+    project: string,
+    env: string,
+    name?: string,
+    key?: string,
+    optionalKey?: boolean
+  ) => void
+  ConnectToUrl: (clientId: number, url: string) => void
+  Disconnect: (clientId: number) => void
+  Call: (
+    clientId: number,
+    name: string,
+    payload: any,
+    cb: (data: any, err: any, reqId: number) => void
+  ) => void
+  SetAuthState: (
+    clientId: number,
+    state: string,
+    cb: (state: string) => void
+  ) => void
+  DeleteClient: (clientId: number) => void
+  GetAuthState: (clientId: number) => string
+}
 
 export class BasedClient extends Emitter {
   constructor(opts?: BasedOpts) {
@@ -84,7 +94,17 @@ export class BasedClient extends Emitter {
   // getState: GetState = new Map()
 
   // -------- Auth state
-  // authState: AuthState = {} // TODO: add method to check authState in c++
+  get authState(): AuthState {
+    const nativeState = GetAuthState(this.clientId)
+    console.log('native state', nativeState)
+    const state = JSON.parse(nativeState)
+    return state
+  }
+  authRequest: {
+    inProgress: boolean
+  } = {
+    inProgress: false,
+  }
 
   // --------- Internal Events
 
@@ -137,6 +157,7 @@ export class BasedClient extends Emitter {
 
   public async destroy() {
     this.disconnect()
+    DeleteClient(this.clientId)
     for (const i in this) {
       delete this[i]
     }
@@ -170,10 +191,17 @@ export class BasedClient extends Emitter {
   // -------- Auth
 
   setAuthState(authState: AuthState): Promise<AuthState> {
+    console.log('----------> setting authstate', authState)
+
     if (typeof authState === 'object') {
+      this.authRequest.inProgress = true
       return new Promise((resolve) => {
         SetAuthState(this.clientId, JSON.stringify(authState), (data) => {
-          resolve(JSON.parse(data))
+          const newAuthState = JSON.parse(data)
+          console.log('----------> new Authstate from server!', newAuthState)
+          this.emit('authstate-change', newAuthState)
+          this.authRequest.inProgress = false
+          resolve(newAuthState)
         })
       })
     } else {
