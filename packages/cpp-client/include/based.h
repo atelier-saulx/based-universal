@@ -41,14 +41,16 @@ extern "C" int Based__observe(based_id client_id,
                               void (*cb)(const char* /* Data */,
                                          uint64_t /* Checksum */,
                                          const char* /* Error*/,
-                                         int /*obs_id*/));
+                                         int /*obs_id*/,
+                                         based_id /*based clientId*/));
 
 extern "C" int Based__get(based_id client_id,
                           char* name,
                           char* payload,
                           void (*cb)(const char* /* Data */,
                                      const char* /* Error */,
-                                     int /*sub_id*/));
+                                     int /*sub_id*/,
+                                     based_id /*based clientId*/));
 
 extern "C" void Based__unobserve(based_id client_id, int sub_id);
 
@@ -57,18 +59,21 @@ extern "C" int Based__call(based_id client_id,
                            char* payload,
                            void (*cb)(const char* /* Data */,
                                       const char* /* Error */,
-                                      int /*request_id*/));
+                                      int /*request_id*/,
+                                      based_id /*based clientId*/));
 
 extern "C" void Based__set_auth_state(based_id client_id,
                                       char* state,
-                                      void (*cb)(const char* /* Auth response */));
+                                      void (*cb)(const char* /* Auth response */
+                                                     based_id /*based clientId*/));
 
 extern "C" int Based__channel_subscribe(based_id client_id,
                                         char* name,
                                         char* payload,
                                         void (*cb)(const char* /* Data */,
                                                    const char* /* Error */,
-                                                   int /*request_id*/));
+                                                   int /*request_id*/,
+                                                   based_id /*based clientId*/));
 
 extern "C" void Based__channel_unsubscribe(based_id client_id, int id);
 
