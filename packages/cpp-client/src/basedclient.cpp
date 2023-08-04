@@ -428,10 +428,6 @@ void BasedClient::on_open() {
 }
 
 void BasedClient::on_message(std::string message) {
-    if (message.length() <= 7) {
-        std::cerr << ">> Payload is too small, wrong data: " << message << std::endl;
-        return;
-    }
     int32_t header = Utility::read_header(message);
     int32_t type = Utility::get_payload_type(header);
     int32_t len = Utility::get_payload_len(header);
