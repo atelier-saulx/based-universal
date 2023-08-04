@@ -246,6 +246,11 @@ class BasedClient {
      */
     void set_auth_state(std::string state, void (*cb)(const char*));
 
+    /**
+     * @brief Get the current auth state of the client.
+     */
+    std::string get_auth_state();
+
     int channel_subscribe(std::string name,
                           std::string payload,
                           void (*cb)(const char* /*data*/, const char* /*error*/, int /*sub_id*/));

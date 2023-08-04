@@ -249,6 +249,10 @@ void BasedClient::set_auth_state(std::string state, void (*cb)(const char*)) {
     drain_queues();
 }
 
+std::string BasedClient::get_auth_state() {
+    return m_auth_state;
+}
+
 int BasedClient::channel_subscribe(std::string name,
                                    std::string payload,
                                    void (*cb)(const char* /*data*/,

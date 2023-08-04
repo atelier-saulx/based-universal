@@ -63,6 +63,8 @@ extern "C" void Based__set_auth_state(based_id client_id,
                                       char* state,
                                       void (*cb)(const char* /* Auth response */));
 
+extern "C" char* Based__get_auth_state(based_id client_id);
+
 extern "C" int Based__channel_subscribe(based_id client_id,
                                         char* name,
                                         char* payload,
