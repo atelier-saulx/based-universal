@@ -27,8 +27,8 @@ const { NewClient, Connect, ConnectToUrl, Disconnect, Call, SetAuthState } =
     ) => void
     SetAuthState: (
       clientId: number,
-      state: AuthState,
-      cb: (state: AuthState) => void
+      state: string,
+      cb: (state: string) => void
     ) => void
   }
 
@@ -172,7 +172,9 @@ export class BasedClient extends Emitter {
   setAuthState(authState: AuthState): Promise<AuthState> {
     if (typeof authState === 'object') {
       return new Promise((resolve) => {
-        SetAuthState(this.clientId, authState, resolve)
+        SetAuthState(this.clientId, JSON.stringify(authState), (data) => {
+          resolve(JSON.parse(data))
+        })
       })
     } else {
       throw new Error('Invalid auth() arguments')

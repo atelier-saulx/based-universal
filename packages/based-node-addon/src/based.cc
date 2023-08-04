@@ -13,6 +13,9 @@
 } = require('../build/Release/based-node-addon')
 */
 
+struct AuthCallbackData {
+    std::string state;
+};
 struct FunctionCallbackData {
     std::string data;
     std::string error;
@@ -26,6 +29,7 @@ struct ObserveCallbackData {
 };
 
 std::map<int, Napi::ThreadSafeFunction> fnStore;
+Napi::ThreadSafeFunction authTsfn;
 std::map<int, Napi::ThreadSafeFunction> obsStore;
 
 void functionCb(const char* data, const char* error, int id) {
@@ -48,6 +52,28 @@ void functionCb(const char* data, const char* error, int id) {
     fnStore.at(id).Napi::ThreadSafeFunction::BlockingCall(d, callback);
     fnStore.at(id).Release();
     fnStore.erase(id);
+}
+
+void authCb(const char* state) {
+    if (!authTsfn) {
+        return;
+    }
+
+    auto callback = [](Napi::Env env, Napi::Function jsCallback, AuthCallbackData* data) {
+        // Transform native data into JS data, passing it to the provided
+        // `jsCallback` -- the TSFN's JavaScript function.
+
+        jsCallback.Call({
+            Napi::String::New(env, data->state),
+        });
+
+        delete data;
+    };
+    AuthCallbackData* d = new AuthCallbackData{state};
+
+    authTsfn.BlockingCall(d, callback);
+    authTsfn.Release();
+    authTsfn = NULL;
 }
 
 void observeCb(const char* data, uint64_t checksum, const char* error, int id) {
@@ -279,6 +305,49 @@ Napi::Value Call(const Napi::CallbackInfo& info) {
     return env.Undefined();
 }
 
+Napi::Value SetAuthState(const Napi::CallbackInfo& info) {
+    /**
+    SetAuthState: (
+      clientId: number,
+      state: AuthState,
+      cb: (state: AuthState) => void
+    ) => void
+     */
+
+    Napi::Env env = info.Env();
+
+    if (info.Length() != 3) {
+        Napi::TypeError::New(env, "Wrong number of arguments")
+            .ThrowAsJavaScriptException();
+        return env.Null();
+    }
+
+    if (!info[0].IsNumber()) {
+        Napi::TypeError::New(env, "Expected number as first argument")
+            .ThrowAsJavaScriptException();
+        return env.Null();
+    }
+    if (!info[1].IsString()) {
+        Napi::TypeError::New(env, "Expected string as second argument")
+            .ThrowAsJavaScriptException();
+        return env.Null();
+    }
+    if (!info[2].IsFunction()) {
+        Napi::TypeError::New(env, "Expected function as third argument")
+            .ThrowAsJavaScriptException();
+        return env.Null();
+    }
+    auto fn = info[2].As<Napi::Function>();
+
+    int clientId = info[0].As<Napi::Number>().Int32Value();
+    std::string state = info[1].As<Napi::String>().Utf8Value();
+
+    Based__set_auth_state(clientId, state.data(), authCb);
+    authTsfn = Napi::ThreadSafeFunction::New(env, fn, "auth-callback", 0, 2);
+
+    return env.Undefined();
+}
+
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
     exports.Set(Napi::String::New(env, "NewClient"), Napi::Function::New(env, NewClient));
     exports.Set(Napi::String::New(env, "ConnectToUrl"),
@@ -287,6 +356,8 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
     exports.Set(Napi::String::New(env, "Unobserve"), Napi::Function::New(env, Unobserve));
     exports.Set(Napi::String::New(env, "Get"), Napi::Function::New(env, Get));
     exports.Set(Napi::String::New(env, "Call"), Napi::Function::New(env, Call));
+    exports.Set(Napi::String::New(env, "SetAuthState"),
+                Napi::Function::New(env, SetAuthState));
     exports.Set(Napi::String::New(env, "Disconnect"),
                 Napi::Function::New(env, Disconnect));
     return exports;
