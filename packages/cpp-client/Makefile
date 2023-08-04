@@ -37,7 +37,7 @@ OBJS = basedclient.o \
 	utility.o \
 	based.o
 
-CXXFLAGS += -Wall -std=c++17 -D_WEBSOCKETPP_CPP11_STL_ -DASIO_STANDALONE -DBASED_VERBOSE -DBASED_TLS
+CXXFLAGS += -Wall -std=c++17 -D_WEBSOCKETPP_CPP11_STL_ -DASIO_STANDALONE -DBASED_VERBOSE
 
 all: tls
 
@@ -59,7 +59,7 @@ example: $(patsubst %,$(ODIR)/%,$(OBJS))
 	$(CXX) example/example.cpp -o $@ $^ $(LDIR) $(CXXFLAGS) $(LDFLAGS) $(LDLIBS)
 
 $(TARGET): $(patsubst %,$(ODIR)/%,$(OBJS))
-	# +@[ -d $(DISTDIR) ] || mkdir -p $(DISTDIR)
+  #+@[ -d $(DISTDIR) ] || mkdir -p $(DISTDIR)
 	$(CXX) -o $@ -shared -fPIC -g $^ $(LDFLAGS) $(LDLIBS) -fvisibility=hidden
 
 linked-example:
@@ -70,3 +70,7 @@ clean:
 	$(RM) $(DISTDIR)
 	$(RM) docker-build
 	$(RM) linked-example
+
+
+# TODO: Add target to make lib in root folder, otherwise it gets added to the libname
+# check using otool -L libbased.dylib

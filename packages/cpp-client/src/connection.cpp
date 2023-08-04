@@ -351,6 +351,7 @@ void WsConnection::set_handlers(ws_client::connection_ptr con) {
     // arguments (hence the placeholders) these handlers must be set before calling connect, and
     // can't be changed after (i think)
     con->set_open_handler([this](websocketpp::connection_hdl) {
+        BASED_LOG("Connection opened");
         m_status = ConnectionStatus::OPEN;
         m_reconnect_attempts = 0;
         if (m_on_open) {
@@ -387,7 +388,7 @@ void WsConnection::set_handlers(ws_client::connection_ptr con) {
         m_status = ConnectionStatus::FAILED;
         m_reconnect_attempts++;
 
-        if (!m_opts.name.empty()) {
+        if (m_uri.size() == 0) {
             connect(m_opts.cluster, m_opts.org, m_opts.project, m_opts.env, m_opts.key,
                     m_opts.optional_key);
         } else {
