@@ -349,17 +349,16 @@ Napi::Value SetAuthState(const Napi::CallbackInfo& info) {
 }
 
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
+    // clang-format off
     exports.Set(Napi::String::New(env, "NewClient"), Napi::Function::New(env, NewClient));
-    exports.Set(Napi::String::New(env, "ConnectToUrl"),
-                Napi::Function::New(env, ConnectToUrl));
+    exports.Set(Napi::String::New(env, "ConnectToUrl"), Napi::Function::New(env, ConnectToUrl));
     exports.Set(Napi::String::New(env, "Observe"), Napi::Function::New(env, Observe));
     exports.Set(Napi::String::New(env, "Unobserve"), Napi::Function::New(env, Unobserve));
     exports.Set(Napi::String::New(env, "Get"), Napi::Function::New(env, Get));
     exports.Set(Napi::String::New(env, "Call"), Napi::Function::New(env, Call));
-    exports.Set(Napi::String::New(env, "SetAuthState"),
-                Napi::Function::New(env, SetAuthState));
-    exports.Set(Napi::String::New(env, "Disconnect"),
-                Napi::Function::New(env, Disconnect));
+    exports.Set(Napi::String::New(env, "SetAuthState"), Napi::Function::New(env, SetAuthState));
+    exports.Set(Napi::String::New(env, "Disconnect"), Napi::Function::New(env, Disconnect));
+    // clang-format on
     return exports;
 }
 
