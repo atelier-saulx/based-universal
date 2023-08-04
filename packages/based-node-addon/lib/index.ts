@@ -96,7 +96,6 @@ export class BasedClient extends Emitter {
   // -------- Auth state
   get authState(): AuthState {
     const nativeState = GetAuthState(this.clientId)
-    console.log('native state', nativeState)
     const state = JSON.parse(nativeState)
     return state
   }
@@ -191,17 +190,18 @@ export class BasedClient extends Emitter {
   // -------- Auth
 
   setAuthState(authState: AuthState): Promise<AuthState> {
-    console.log('----------> setting authstate', authState)
-
     if (typeof authState === 'object') {
       this.authRequest.inProgress = true
-      return new Promise((resolve) => {
+      return new Promise((resolve, reject) => {
         SetAuthState(this.clientId, JSON.stringify(authState), (data) => {
           const newAuthState = JSON.parse(data)
-          console.log('----------> new Authstate from server!', newAuthState)
           this.emit('authstate-change', newAuthState)
           this.authRequest.inProgress = false
-          resolve(newAuthState)
+          if (newAuthState.error) {
+            reject(new Error(newAuthState.error))
+          } else {
+            resolve(newAuthState)
+          }
         })
       })
     } else {
