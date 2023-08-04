@@ -3,16 +3,6 @@
 #include <iostream>
 #include <map>
 
-/**
-  NewClient,
-  Connect,
-  ConnectToUrl,
-  Disconnect,
-  Call,
-  SetAuthstate,
-} = require('../build/Release/based-node-addon')
-*/
-
 struct AuthCallbackData {
     std::string state;
 };
