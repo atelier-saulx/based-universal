@@ -58,6 +58,9 @@ int random_number() {
 
 std::string gen_cache(BasedConnectOpt opts) {
     std::string name = opts.name.length() > 0 ? opts.name : "@based/env-hub";
+    if (SERVICES.find(name) == SERVICES.end()) {
+        throw std::runtime_error("This service is not discoverable");
+    }
     auto name_index = SERVICES.at(name);
     auto random_path = random_number();
     auto prefix = std::to_string(name_index) + std::to_string(random_path);
