@@ -420,7 +420,7 @@ std::vector<uint8_t> Utility::encode_subscribe_channel_message(obs_id_t id,
 }
 
 std::vector<uint8_t> Utility::encode_unsubscribe_channel_message(obs_id_t id) {
-    // Type 6 = unsubscribe
+    // Type 7 = unsubscribe
     // | 4 header | 8 id |
 
     std::vector<uint8_t> buff;
@@ -429,7 +429,7 @@ std::vector<uint8_t> Utility::encode_unsubscribe_channel_message(obs_id_t id) {
      * Length in bytes. 4 B header + 8 B id + 8 B checksum,
      * add the rest later based on payload and name.
      */
-    append_header(buff, 6, false, 12);
+    append_header(buff, 7, false, 12);
     append_bytes(buff, id, 8);
 
     return buff;

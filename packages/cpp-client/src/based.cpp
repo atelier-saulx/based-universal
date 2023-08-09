@@ -144,7 +144,7 @@ extern "C" void Based__set_auth_state(based_id client_id, char* state, void (*cb
 extern "C" char* Based__get_auth_state(based_id client_id) {
     if (clients.find(client_id) == clients.end()) {
         std::cerr << "No such id found" << std::endl;
-        return "{}";
+        return (char*)"{}";
     }
     auto cl = clients.at(client_id);
     auto state = cl->get_auth_state();

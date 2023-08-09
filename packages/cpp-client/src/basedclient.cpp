@@ -324,7 +324,7 @@ void BasedClient::channel_unsubscribe(int sub_id) {
 
     // if the list is now empty, add request to unobserve to queue
     if (m_channel_to_subs.at(obs_id).empty()) {
-        std::vector<uint8_t> msg = Utility::encode_unobserve_message(obs_id);
+        std::vector<uint8_t> msg = Utility::encode_unsubscribe_channel_message(obs_id);
         m_unobserve_queue.push_back(msg);
         // and remove the obs from the map of active ones.
         delete m_active_channels.at(obs_id);
