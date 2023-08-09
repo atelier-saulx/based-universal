@@ -164,7 +164,7 @@ extern "C" int Based__channel_subscribe(based_id client_id,
         return -1;
     }
     auto cl = clients.at(client_id);
-    cl->channel_subscribe(name, payload, cb);
+    return cl->channel_subscribe(name, payload, cb);
 }
 
 extern "C" void Based__channel_unsubscribe(based_id client_id, int id) {

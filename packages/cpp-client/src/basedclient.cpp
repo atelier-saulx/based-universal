@@ -308,7 +308,7 @@ void BasedClient::channel_publish(std::string name, std::string payload, std::st
 
 void BasedClient::channel_unsubscribe(int sub_id) {
     if (m_sub_to_channel.find(sub_id) == m_sub_to_channel.end()) {
-        BASED_LOG("No subscription found with sub_id %d", sub_id);
+        BASED_LOG("No channel_subscription found with sub_id %d", sub_id);
         return;
     }
     auto obs_id = m_sub_to_channel.at(sub_id);
@@ -322,7 +322,6 @@ void BasedClient::channel_unsubscribe(int sub_id) {
     // remove sub to obs mapping for removed sub
     m_sub_to_channel.erase(sub_id);
 
-    // if the list is now empty, add request to unobserve to queue
     if (m_channel_to_subs.at(obs_id).empty()) {
         std::vector<uint8_t> msg = Utility::encode_unsubscribe_channel_message(obs_id);
         m_unobserve_queue.push_back(msg);
@@ -683,7 +682,7 @@ void BasedClient::on_message(std::string message) {
                         fn(payload.c_str(), "", sub_id);
                     }
                 } else {
-                    BASED_LOG("Channel message received, but no listeners with obs_id %llu found",
+                    BASED_LOG("Channel message received, but no listeners with obs_id %d found",
                               obs_id);
                 }
 

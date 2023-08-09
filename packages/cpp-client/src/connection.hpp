@@ -70,7 +70,6 @@ class WsConnection {
     std::function<void()> m_on_open;
     std::function<void(std::string)> m_on_message;
     int m_reconnect_attempts;
-    int m_selector_index;
 
     BasedConnectOpt m_opts;
 

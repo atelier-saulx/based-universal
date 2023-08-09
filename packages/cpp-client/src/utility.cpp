@@ -420,7 +420,7 @@ std::vector<uint8_t> Utility::encode_subscribe_channel_message(obs_id_t id,
 }
 
 std::vector<uint8_t> Utility::encode_unsubscribe_channel_message(obs_id_t id) {
-    // Type 7 = unsubscribe
+    // Type 7 = channel__unsubscribe
     // | 4 header | 8 id |
 
     std::vector<uint8_t> buff;

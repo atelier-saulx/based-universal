@@ -171,8 +171,7 @@ WsConnection::WsConnection()
     : m_status(ConnectionStatus::CLOSED),
       m_on_open(NULL),
       m_on_message(NULL),
-      m_reconnect_attempts(0),
-      m_selector_index(0) {
+      m_reconnect_attempts(0) {
     // set the endpoint logging behavior to silent by clearing all of the access and error
     // logging channels
     m_endpoint.clear_access_channels(websocketpp::log::alevel::all);
@@ -232,7 +231,7 @@ void WsConnection::connect(std::string cluster,
     m_opts.key = key;
     m_opts.optional_key = optional_key;
 
-    std::thread con_thr([&, org, project, env, cluster, key, optional_key]() {
+    std::thread con_thr([&]() {
         std::string service_url = discover_service(m_opts, false);
         connect_to_uri(service_url);
     });
