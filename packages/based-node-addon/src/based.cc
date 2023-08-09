@@ -18,9 +18,30 @@ struct ObserveCallbackData {
     int id;
 };
 
-std::map<int, Napi::ThreadSafeFunction> fnStore;
 Napi::ThreadSafeFunction authTsfn;
+std::map<int, Napi::ThreadSafeFunction> fnStore;
 std::map<int, Napi::ThreadSafeFunction> obsStore;
+std::map<int, Napi::ThreadSafeFunction> channelStore;
+
+void channelCb(const char* data, const char* error, int id) {
+    if (channelStore.find(id) == channelStore.end()) {
+        return;
+    }
+    auto callback = [](Napi::Env env, Napi::Function jsCallback,
+                       FunctionCallbackData* data) {
+        // Transform native data into JS data, passing it to the provided
+        // `jsCallback` -- the TSFN's JavaScript function.
+
+        jsCallback.Call({Napi::String::New(env, data->data),
+                         Napi::String::New(env, data->error),
+                         Napi::Number::New(env, data->id)});
+
+        delete data;
+    };
+    FunctionCallbackData* d = new FunctionCallbackData{data, error, id};
+
+    channelStore.at(id).BlockingCall(d, callback);
+}
 
 void functionCb(const char* data, const char* error, int id) {
     if (fnStore.find(id) == fnStore.end()) {
@@ -189,6 +210,7 @@ Napi::Value Unobserve(const Napi::CallbackInfo& info) {
 
     return env.Undefined();
 }
+
 Napi::Value Get(const Napi::CallbackInfo& info) {
     /*
     Get: (
@@ -304,6 +326,95 @@ Napi::Value Call(const Napi::CallbackInfo& info) {
     return env.Undefined();
 }
 
+Napi::Value ChannelSubscribe(const Napi::CallbackInfo& info) {
+    /*
+    ChannelSubscribe: (
+      clientId: number,
+      name: string,
+      payload: any,
+      cb: (data: any, err: any, reqId: number) => void
+    ) => number
+
+    */
+
+    Napi::Env env = info.Env();
+
+    int clientId = info[0].As<Napi::Number>().Int32Value();
+    std::string name = info[1].As<Napi::String>().Utf8Value();
+    std::string payload = "";
+    if (info[2].IsString()) {
+        payload = info[2].As<Napi::String>().Utf8Value();
+    } else if (info[2].IsNumber()) {
+        payload = info[2].As<Napi::Number>().ToString();
+    }
+
+    int id = Based__channel_subscribe(clientId, name.data(), payload.data(), channelCb);
+
+    auto fn = info[3].As<Napi::Function>();
+    channelStore[id] = Napi::ThreadSafeFunction::New(env, fn, "callback-channel", 0, 2);
+
+    return Napi::Number::New(env, id);
+}
+
+Napi::Value ChannelUnsubscribe(const Napi::CallbackInfo& info) {
+    /*
+        ChannelUnsubscribe: (clientId: number, reqId: number) => void
+    */
+
+    Napi::Env env = info.Env();
+
+    if (info.Length() < 2) {
+        Napi::TypeError::New(env, "Wrong number of arguments")
+            .ThrowAsJavaScriptException();
+        return env.Null();
+    }
+
+    if (!info[0].IsNumber()) {
+        Napi::TypeError::New(env, "Expected number as first argument")
+            .ThrowAsJavaScriptException();
+        return env.Null();
+    }
+    if (!info[1].IsNumber()) {
+        Napi::TypeError::New(env, "Expected number as second argument")
+            .ThrowAsJavaScriptException();
+        return env.Null();
+    }
+    int clientId = info[0].As<Napi::Number>().Int32Value();
+    int subId = info[1].As<Napi::Number>().Int32Value();
+
+    std::cout << "based.cc unsub\n";
+
+    Based__channel_unsubscribe(clientId, subId);
+
+    channelStore.at(subId).Release();
+    channelStore.erase(subId);
+
+    return env.Undefined();
+}
+
+Napi::Value ChannelPublish(const Napi::CallbackInfo& info) {
+    /*
+    ChannelPublish: (
+      clientId: number,
+      name: string,
+      payload: any,
+      message: string
+    ) => void
+    */
+
+    Napi::Env env = info.Env();
+    // TODO: validation
+
+    int clientId = info[0].As<Napi::Number>().Int32Value();
+    std::string name = info[1].As<Napi::String>().Utf8Value();
+    std::string payload = info[2].As<Napi::String>().Utf8Value();
+    std::string message = info[3].As<Napi::String>().Utf8Value();
+
+    Based__channel_publish(clientId, name.data(), payload.data(), message.data());
+
+    return env.Undefined();
+}
+
 Napi::Value SetAuthState(const Napi::CallbackInfo& info) {
     /**
     SetAuthState: (
@@ -364,6 +475,9 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
     exports.Set(Napi::String::New(env, "Unobserve"), Napi::Function::New(env, Unobserve));
     exports.Set(Napi::String::New(env, "Get"), Napi::Function::New(env, Get));
     exports.Set(Napi::String::New(env, "Call"), Napi::Function::New(env, Call));
+    exports.Set(Napi::String::New(env, "ChannelSubscribe"), Napi::Function::New(env, ChannelSubscribe));
+    exports.Set(Napi::String::New(env, "ChannelUnsubscribe"), Napi::Function::New(env, ChannelUnsubscribe));
+    exports.Set(Napi::String::New(env, "ChannelPublish"), Napi::Function::New(env, ChannelPublish));
     exports.Set(Napi::String::New(env, "SetAuthState"), Napi::Function::New(env, SetAuthState));
     exports.Set(Napi::String::New(env, "Disconnect"), Napi::Function::New(env, Disconnect));
     exports.Set(Napi::String::New(env, "DeleteClient"), Napi::Function::New(env, DeleteClient));

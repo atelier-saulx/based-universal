@@ -1,74 +1,69 @@
-// import { BasedClient } from './'
+import { BasedClient } from './'
+import { ChannelMessageFunction } from './types/channel'
+import { BasedError } from './types/error'
 
-// export class BasedChannel<P = any, K = any> {
-//   public id: number
-//   public payload: P
-//   public name: string
-//   public client: BasedClient
+const { ChannelSubscribe, ChannelUnsubscribe, ChannelPublish } =
+  require('../build/Release/based-node-addon') as {
+    ChannelSubscribe: (
+      clientId: number,
+      name: string,
+      payload: string,
+      cb: (data: any, err: any, reqId: number) => void
+    ) => number
+    ChannelUnsubscribe: (clientId: number, reqId: number) => void
+    ChannelPublish: (
+      clientId: number,
+      name: string,
+      payload: string,
+      message: string
+    ) => void
+  }
 
-//   constructor(client: BasedClient, name: string, payload: P) {
-//     this.payload = payload
-//     this.id = genObserveId(name, payload)
-//     this.client = client
-//     this.name = name
-//   }
+export class BasedChannel<P = any, K = any> {
+  public client: BasedClient
+  public name: string
+  public payload: P
 
-//   subscribe(
-//     onMessage: ChannelMessageFunction,
-//     onError?: (err: BasedError) => void
-//   ): () => void {
-//     let subscriberId: number
-//     if (
-//       !this.client.channelState.has(this.id) ||
-//       this.client.channelState.get(this.id).subscribers.size === 0
-//     ) {
-//       subscriberId = 1
-//       const subscribers = new Map()
-//       subscribers.set(subscriberId, { onMessage, onError })
-//       this.client.channelState.set(this.id, {
-//         payload: this.payload,
-//         name: this.name,
-//         subscribers,
-//         removeTimer: -1,
-//         idCnt: 1,
-//       })
-//       addChannelSubscribeToQueue(this.client, this.name, this.id, this.payload)
-//     } else {
-//       const channel = this.client.channelState.get(this.id)
-//       channel.removeTimer = -1
-//       subscriberId = ++channel.idCnt
-//       channel.subscribers.set(subscriberId, { onMessage, onError })
-//     }
+  constructor(client: BasedClient, name: string, payload: P) {
+    this.client = client
+    this.name = name
+    this.payload = payload
+  }
 
-//     return () => {
-//       const channel = this.client.channelState.get(this.id)
-//       channel.subscribers.delete(subscriberId)
-//       if (channel.subscribers.size === 0) {
-//         channel.removeTimer = 2
-//         addChannelCloseToQueue(this.client, this.id)
-//       }
-//     }
-//   }
+  subscribe(
+    onMessage: ChannelMessageFunction,
+    onError?: (err: BasedError) => void
+  ): () => void {
+    const id = ChannelSubscribe(
+      this.client.clientId,
+      this.name,
+      JSON.stringify(this.payload),
+      (data, err, reqId) => {
+        if (data) onMessage(JSON.parse(data))
+        else if (onError && err) onError(JSON.parse(err))
+      }
+    )
 
-//   publish(message: K): void {
-//     if (!this.client.channelState.has(this.id)) {
-//       // This is a perf optmization to not send payload + name
-//       this.client.channelState.set(this.id, {
-//         payload: this.payload,
-//         name: this.name,
-//         subscribers: new Map(),
-//         removeTimer: 2, // 2x 30sec
-//         idCnt: 0,
-//       })
-//       cleanUpChannels(this.client)
-//       addChannelPublishIdentifier(this.client, this.name, this.id, this.payload)
-//     } else {
-//       const channel = this.client.channelState.get(this.id)
-//       if (channel.removeTimer !== -1 && channel.removeTimer < 2) {
-//         channel.removeTimer = 2 // 2x 30sec
-//         cleanUpChannels(this.client)
-//       }
-//     }
-//     addToPublishQueue(this.client, this.id, message)
-//   }
-// }
+    return () => {
+      ChannelUnsubscribe(this.client.clientId, id)
+    }
+  }
+
+  publish(message: K): void {
+    if (typeof message === 'string') {
+      ChannelPublish(
+        this.client.clientId,
+        this.name,
+        JSON.stringify(this.payload),
+        message
+      )
+    } else {
+      ChannelPublish(
+        this.client.clientId,
+        this.name,
+        JSON.stringify(this.payload),
+        JSON.stringify(message)
+      )
+    }
+  }
+}

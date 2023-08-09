@@ -1,4 +1,5 @@
 import { EventEmitter } from 'events'
+import { BasedChannel } from './BasedChannel'
 import Emitter from './Emitter'
 import { BasedQuery } from './Query'
 import { AuthState, BasedOpts, Settings } from './types'
@@ -165,11 +166,9 @@ export class BasedClient extends Emitter {
 
   // ---------- Channel
 
-  // TODO:
-
-  // channel(name: string, payload?: any): BasedChannel {
-  //   // return new BasedChannel(this, name, payload)
-  // }
+  channel(name: string, payload?: any): BasedChannel {
+    return new BasedChannel(this, name, payload)
+  }
 
   // ---------- Query
 
