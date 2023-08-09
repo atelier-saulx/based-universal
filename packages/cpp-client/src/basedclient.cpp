@@ -631,7 +631,7 @@ void BasedClient::on_message(std::string message) {
                     m_obs_to_gets.at(obs_id).clear();
                 }
             } else if (error.find("channelId") != error.end()) {
-                auto channel_id = error.at("observableId");
+                auto channel_id = error.at("channelId");
 
                 m_active_channels.erase(channel_id);
 
