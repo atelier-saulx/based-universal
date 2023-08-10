@@ -651,16 +651,21 @@ void BasedClient::on_message(std::string message) {
         }
             return;
         case IncomingType::CHANNEL_REPUBLISH: {
-            obs_id_t obs_id = Utility::read_bytes_from_string(message, 4, 8);
-            // if (m_active_channels.find(obs_id) != m_active_channels.end()) {
-            auto obs = m_active_publish_channels.at(obs_id);
+            // This case happens when the server needs more info about the channel.
+            // We send that info and then we send the data back again.
 
-            // first time this channel is observed
+            obs_id_t obs_id = Utility::read_bytes_from_string(message, 4, 8);
+            auto obs = m_active_publish_channels.at(obs_id);
 
             std::vector<uint8_t> msg =
                 Utility::encode_subscribe_channel_message(obs_id, obs->name, obs->payload, true);
 
             m_channel_sub_queue.push_back(msg);
+
+            std::vector<uint8_t> buff;
+            Utility::append_string(buff, message);
+
+            m_channel_sub_queue.push_back(buff);
             drain_queues();
         }
             return;

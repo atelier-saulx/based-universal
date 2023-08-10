@@ -12,6 +12,17 @@
 
 using json = nlohmann::json;
 
+enum OutgoingType {
+    FUNCTION = 0,
+    SUBSCRIBE = 1,
+    UNSUBSCRIBE = 2,
+    GET = 3,
+    AUTH = 4,
+    CHANNEL_SUBSCRIBE = 5,
+    CHANNEL_PUBLISH = 6,
+    CHANNEL_UNSUBSCRIBE = 7,
+};
+
 std::string string_from_char_code(uint8_t c) {
     std::string res(1, (char)c);
     return res;
@@ -254,33 +265,19 @@ std::vector<uint8_t> Utility::encode_function_message(req_id_t id,
             is_deflate = 1;
             p = deflate_string(payload);
 
-            // char const* buff = p.data();
-
-            // for (int i = 0; i < p.length(); i++) {
-            //     std::cout << "buff " << i << " = " << (int32_t)buff[i] << ",\t 0x" << std::hex
-            //               << +buff[i] << std::dec << std::endl;
-            // }
-
         } else {
             p = payload;
         }
 
         len += p.length();
     }
-    append_header(buff, 0, is_deflate, len);
+    append_header(buff, OutgoingType::FUNCTION, is_deflate, len);
     append_bytes(buff, id, 3);
     buff.push_back(name.length());
     append_string(buff, name);
     if (p.length()) {
         append_string(buff, p);
     }
-
-    // std::cout << "> FINAL BUFFER" << std::endl;
-    // for (int i = 0; i < buff.size(); i++) {
-    //     std::cout << "buff " << i << " = " << (int)buff.at(i) << ",\t 0x" << std::hex <<
-    //     +buff.at(i)
-    //               << std::dec << std::endl;
-    // }
 
     return buff;
 }
@@ -314,7 +311,7 @@ std::vector<uint8_t> Utility::encode_observe_message(obs_id_t id,
 
         len += p.length();
     }
-    append_header(buff, 1, is_deflate, len);
+    append_header(buff, OutgoingType::SUBSCRIBE, is_deflate, len);
     append_bytes(buff, id, 8);
     append_bytes(buff, checksum, 8);
     buff.push_back(name.length());
@@ -337,7 +334,7 @@ std::vector<uint8_t> Utility::encode_unobserve_message(obs_id_t obs_id) {
      */
     int32_t len = 12;
 
-    append_header(buff, 2, 0, len);
+    append_header(buff, OutgoingType::UNSUBSCRIBE, 0, len);
     append_bytes(buff, obs_id, 8);
     return buff;
 }
@@ -370,7 +367,7 @@ std::vector<uint8_t> Utility::encode_get_message(obs_id_t id,
 
         len += p.length();
     }
-    append_header(buff, 3, is_deflate, len);
+    append_header(buff, OutgoingType::GET, is_deflate, len);
     append_bytes(buff, id, 8);
     append_bytes(buff, checksum, 8);
     buff.push_back(name.length());
@@ -407,7 +404,7 @@ std::vector<uint8_t> Utility::encode_subscribe_channel_message(obs_id_t id,
 
     len += 8;
 
-    append_header(buff, 5, is_deflate, len);
+    append_header(buff, OutgoingType::CHANNEL_SUBSCRIBE, is_deflate, len);
     append_bytes(buff, id, 8);
     buff.push_back(name.length());
     append_string(buff, name);
@@ -429,13 +426,14 @@ std::vector<uint8_t> Utility::encode_unsubscribe_channel_message(obs_id_t id) {
      * Length in bytes. 4 B header + 8 B id + 8 B checksum,
      * add the rest later based on payload and name.
      */
-    append_header(buff, 7, false, 12);
+    append_header(buff, OutgoingType::CHANNEL_UNSUBSCRIBE, false, 12);
     append_bytes(buff, id, 8);
 
     return buff;
 }
 
 std::vector<uint8_t> Utility::encode_publish_channel_message(obs_id_t id, std::string& payload) {
+    // Type 6 = channel__publish
     // | 4 header | 8 id | * payload |
 
     std::vector<uint8_t> buff;
@@ -456,7 +454,7 @@ std::vector<uint8_t> Utility::encode_publish_channel_message(obs_id_t id, std::s
         len += p.length();
     }
 
-    append_header(buff, 6, is_deflate, len);
+    append_header(buff, OutgoingType::CHANNEL_PUBLISH, is_deflate, len);
     append_bytes(buff, id, 8);
 
     if (!p.empty()) {
@@ -632,25 +630,14 @@ std::string Utility::decode(std::string input, std::vector<std::string> encode_c
 
     for (size_t i = 0; i < real_chars.size(); i++) {
         reverse_char_map[replacement.at(i)] = real_chars.at(i);
-        // std::cout << "{ " << replacement.at(i) << ", " << reverse_char_map.at(replacement.at(i))
-        //           << "}" << std::endl;
     }
-
-    // std::cout << "-------> real_chars.size: " << real_chars.size() << std::endl;
-    // std::cout << "-------> input.size: " << input.size() << std::endl;
-    // std::cout << "-------> encode_chars.size: " << encode_chars.size() << std::endl;
-    // std::cout << "-------> reverse_char_map.size: " << reverse_char_map.size() << std::endl;
 
     std::string str = "";
     for (int i = 0; i < input.length(); i++) {
-        // std::cout << "++++++++ input.at(" << i << ") = " << input.at(i) << std::endl;
         std::string c{input.at(i)};
         if (std::find(encode_chars.begin(), encode_chars.end(), c) != encode_chars.end()) {
             std::string key{input.at(i + 1)};
-            // std::cout << "++++++++ key = " << key << std::endl;
             str += reverse_char_map.at(key);
-            // std::cout << "++++++++ reverse_char_map.at(key) = " << reverse_char_map.at(key)
-            //   << std::endl;
             i++;
         } else {
             str += c;
