@@ -606,10 +606,7 @@ void BasedClient::on_message(std::string message) {
                     m_obs_to_gets.erase(id);
                 }
             } else if (error.find("observableId") != error.end()) {
-                // destroy observable
                 auto obs_id = error.at("observableId");
-
-                m_active_observables.erase(obs_id);
 
                 if (m_obs_to_subs.find(obs_id) != m_obs_to_subs.end()) {
                     for (auto sub_id : m_obs_to_subs.at(obs_id)) {
@@ -617,8 +614,6 @@ void BasedClient::on_message(std::string message) {
                             auto fn = m_sub_callback.at(sub_id);
                             fn("", 0, payload.c_str(), sub_id);
                         }
-                        m_obs_to_subs.erase(sub_id);
-                        m_sub_to_obs.erase(sub_id);
                     }
                 }
 
