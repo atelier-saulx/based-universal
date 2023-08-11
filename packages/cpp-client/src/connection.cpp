@@ -262,6 +262,11 @@ void WsConnection::connect_to_uri(std::string uri) {
     }
 
     m_status = ConnectionStatus::CONNECTING;
+
+    // Add special headers
+
+    con->append_header("sec-websocket-protocol", "{}");
+
     m_hdl = con->get_handle();
 
     set_handlers(con);
