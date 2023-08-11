@@ -382,8 +382,6 @@ Napi::Value ChannelUnsubscribe(const Napi::CallbackInfo& info) {
     int clientId = info[0].As<Napi::Number>().Int32Value();
     int subId = info[1].As<Napi::Number>().Int32Value();
 
-    std::cout << "based.cc unsub\n";
-
     Based__channel_unsubscribe(clientId, subId);
 
     channelStore.at(subId).Release();
@@ -407,7 +405,13 @@ Napi::Value ChannelPublish(const Napi::CallbackInfo& info) {
 
     int clientId = info[0].As<Napi::Number>().Int32Value();
     std::string name = info[1].As<Napi::String>().Utf8Value();
-    std::string payload = info[2].As<Napi::String>().Utf8Value();
+
+    std::string payload = "";
+    if (info[2].IsString()) {
+        payload = info[2].As<Napi::String>().Utf8Value();
+    } else if (info[2].IsNumber()) {
+        payload = info[2].As<Napi::Number>().ToString();
+    }
     std::string message = info[3].As<Napi::String>().Utf8Value();
 
     Based__channel_publish(clientId, name.data(), payload.data(), message.data());

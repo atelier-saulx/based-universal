@@ -19,5 +19,6 @@ COPY ./example ./example
 # COPY ./CMakeLists.txt ./CMakeLists.txt
 COPY ./Makefile .
 CMD ls .
-CMD make && cp linux/libbased.so ./out/libbased.so
+CMD make && cp libbased.so ./out/libbased.so
+# CMD make linked-example && cp example ./out/example
 # CMD cd build-scripts && bash ./build-linux.sh && cp -r build_linux/Release/ ./out/

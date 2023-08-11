@@ -50,20 +50,11 @@ export class BasedChannel<P = any, K = any> {
   }
 
   publish(message: K): void {
-    if (typeof message === 'string') {
-      ChannelPublish(
-        this.client.clientId,
-        this.name,
-        JSON.stringify(this.payload),
-        message
-      )
-    } else {
-      ChannelPublish(
-        this.client.clientId,
-        this.name,
-        JSON.stringify(this.payload),
-        JSON.stringify(message)
-      )
-    }
+    ChannelPublish(
+      this.client.clientId,
+      this.name,
+      JSON.stringify(this.payload),
+      JSON.stringify(message)
+    )
   }
 }

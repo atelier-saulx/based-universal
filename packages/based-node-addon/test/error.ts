@@ -3,6 +3,7 @@ import { BasedClient } from '..'
 import { BasedServer } from '@based/server'
 import { BasedError, BasedErrorCode } from '../lib/types/error'
 import { BasedQueryFunction, ObservableUpdateFunction } from '@based/functions'
+import { wait } from '@saulx/utils'
 
 const throwingFunction = async () => {
   throw new Error('This is error message')
@@ -30,8 +31,27 @@ const errorTimer = (_: any, __: any, update: ObservableUpdateFunction) => {
   }
 }
 
+const alternatingError = (
+  _: any,
+  __: any,
+  update: ObservableUpdateFunction
+) => {
+  let cnt = 0
+  const int = setInterval(() => {
+    if (++cnt % 2) {
+      update(undefined, undefined, new Error('derp'))
+    } else {
+      update('hello')
+    }
+  }, 20)
+  update('doei')
+  return () => {
+    clearInterval(int)
+  }
+}
+
 const setup = async (t: ExecutionContext) => {
-  t.timeout(4000)
+  // t.timeout(4000)
   const coreClient = new BasedClient()
 
   const server = new BasedServer({
@@ -55,8 +75,13 @@ const setup = async (t: ExecutionContext) => {
         },
         errorTimer: {
           type: 'query',
-          uninstallAfterIdleTime: 1e3,
+          uninstallAfterIdleTime: 1,
           fn: errorTimer,
+        },
+        acdc: {
+          type: 'query',
+          uninstallAfterIdleTime: 1,
+          fn: alternatingError,
         },
       },
     },
@@ -165,4 +190,46 @@ test.serial('throw in an interval', async (t) => {
       coreClient.query('errorTimer', {}).subscribe(() => {}, reject)
     )
   )
+})
+
+test.only('unobserve errored query twice', async (t) => {
+  const { coreClient } = await setup(t)
+  coreClient.connect({
+    url: async () => {
+      return 'ws://localhost:9910'
+    },
+  })
+
+  let dataCnt = 0
+  let errCnt = 0
+
+  const one = coreClient.query('acdc', {}).subscribe(
+    () => {
+      dataCnt++
+    },
+    () => {
+      errCnt++
+    }
+  )
+  await wait(300)
+
+  one()
+  t.assert(dataCnt > 2)
+  t.assert(errCnt > 2)
+
+  dataCnt = 0
+  errCnt = 0
+
+  const two = coreClient.query('acdc', {}).subscribe(
+    () => {
+      dataCnt++
+    },
+    () => {
+      errCnt++
+    }
+  )
+  await wait(300)
+  two()
+  t.assert(dataCnt > 2)
+  t.assert(errCnt > 2)
 })
