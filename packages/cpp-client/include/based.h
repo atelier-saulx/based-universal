@@ -19,7 +19,7 @@ extern "C" char* Based__get_service(based_id client_id,
                                     char* name,
                                     char* key,
                                     bool optional_key,
-                                    bool html);
+                                    bool http);
 
 extern "C" void Based__connect_to_url(based_id client_id, char* url);
 extern "C" void Based__connect(based_id client_id,
@@ -41,7 +41,7 @@ extern "C" int Based__observe(based_id client_id,
                               void (*cb)(const char* /* Data */,
                                          uint64_t /* Checksum */,
                                          const char* /* Error*/,
-                                         int /*obs_id*/));
+                                         int /*sub_id*/));
 
 extern "C" int Based__get(based_id client_id,
                           char* name,

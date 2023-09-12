@@ -38,13 +38,13 @@ extern "C" char* Based__get_service(based_id client_id,
                                     char* name,
                                     char* key,
                                     bool optional_key,
-                                    bool html) {
+                                    bool http) {
     if (clients.find(client_id) == clients.end()) {
         std::cerr << "No such id found" << std::endl;
         return (char*)"";
     }
     auto cl = clients.at(client_id);
-    auto res = cl->discover_service(cluster, org, project, env, name, key, optional_key, html);
+    auto res = cl->discover_service(cluster, org, project, env, name, key, optional_key, http);
     memset(get_service_buf, 0, sizeof get_service_buf);
     strncpy(get_service_buf, res.c_str(), res.length());
     return get_service_buf;

@@ -116,6 +116,9 @@ int BasedClient::observe(std::string name,
     auto obs_id = make_obs_id(name, payload);
     auto sub_id = m_sub_id++;
 
+    BASED_LOG("adding observable function, name: %s, obs_id: %d, sub_id: %d", name.c_str(), obs_id,
+              sub_id);
+
     if (m_active_observables.find(obs_id) == m_active_observables.end()) {
         // first time this query is observed
         // encode request
@@ -240,6 +243,8 @@ int BasedClient::call(std::string name,
 
 void BasedClient::set_auth_state(std::string state, void (*cb)(const char*)) {
     if (m_auth_in_progress) return;
+
+    BASED_LOG("Setting AuthState: %s", state.c_str());
 
     m_auth_request_state = state;
     m_auth_in_progress = true;
@@ -460,6 +465,7 @@ void BasedClient::on_message(std::string message) {
         case IncomingType::SUBSCRIPTION_DATA: {
             obs_id_t obs_id = (obs_id_t)Utility::read_bytes_from_string(message, 4, 8);
             uint64_t checksum = Utility::read_bytes_from_string(message, 12, 8);
+            BASED_LOG("RECEIVED SUB DATA, obs_id: %d, checksum: %d", obs_id, checksum);
 
             int start = 20;  // size of header
             int end = len + 4;
@@ -474,15 +480,22 @@ void BasedClient::on_message(std::string message) {
 
             if (m_obs_to_subs.find(obs_id) != m_obs_to_subs.end()) {
                 for (auto sub_id : m_obs_to_subs.at(obs_id)) {
+                    BASED_LOG("Found obs callback for obs_id: %d, sub_id: %d", obs_id, sub_id);
+                    BASED_LOG("PAYLOAD: %s", payload.c_str());
                     auto fn = m_sub_callback.at(sub_id);
                     fn(payload.c_str(), checksum, "", sub_id);
+                    BASED_LOG("Finished invoking obs_id: %d, sub_id: %d", obs_id, sub_id);
                 }
             }
 
             if (m_obs_to_gets.find(obs_id) != m_obs_to_gets.end()) {
                 for (auto sub_id : m_obs_to_gets.at(obs_id)) {
                     auto fn = m_get_sub_callbacks.at(sub_id);
+                    BASED_LOG("Found get callback for obs_id: %d, sub_id: %d", obs_id, sub_id);
+                    BASED_LOG("PAYLOAD: %s", payload.c_str());
                     fn(payload.c_str(), "", sub_id);
+                    BASED_LOG("Finished invoking get function obs_id: %d, sub_id: %d", obs_id,
+                              sub_id);
                     m_get_sub_callbacks.erase(sub_id);
                 }
                 m_obs_to_gets.at(obs_id).clear();
@@ -493,6 +506,8 @@ void BasedClient::on_message(std::string message) {
             obs_id_t obs_id = (obs_id_t)Utility::read_bytes_from_string(message, 4, 8);
             uint64_t checksum = Utility::read_bytes_from_string(message, 12, 8);
             uint64_t prev_checksum = Utility::read_bytes_from_string(message, 20, 8);
+
+            BASED_LOG("RECEIVED SUB DIFF DATA, obs_id: %d, checksum: %d", obs_id, checksum);
 
             uint64_t cached_checksum = 0;
 
@@ -528,7 +543,10 @@ void BasedClient::on_message(std::string message) {
             if (m_obs_to_subs.find(obs_id) != m_obs_to_subs.end()) {
                 for (auto sub_id : m_obs_to_subs.at(obs_id)) {
                     auto fn = m_sub_callback.at(sub_id);
+                    BASED_LOG("Found obs callback for obs_id: %d, sub_id:%d", obs_id, sub_id);
+                    BASED_LOG("PAYLOAD: %s", patched_payload.c_str());
                     fn(patched_payload.c_str(), checksum, "", sub_id);
+                    BASED_LOG("Finished invoking obs_id: %d, sub_id: %d", obs_id, sub_id);
                 }
             }
 
@@ -536,7 +554,11 @@ void BasedClient::on_message(std::string message) {
                 for (auto sub_id : m_obs_to_gets.at(obs_id)) {
                     auto fn = m_get_sub_callbacks.at(sub_id);
                     fn(patched_payload.c_str(), "", sub_id);
+                    BASED_LOG("Found get callback for obs_id: %d, sub_id:%d", obs_id, sub_id);
+                    BASED_LOG("PAYLOAD: %s", patched_payload.c_str());
                     m_get_sub_callbacks.erase(sub_id);
+                    BASED_LOG("Finished invoking get function obs_id: %d, sub_id: %d", obs_id,
+                              sub_id);
                 }
                 m_obs_to_gets.at(obs_id).clear();
             }
@@ -562,6 +584,9 @@ void BasedClient::on_message(std::string message) {
                 payload = is_deflate ? Utility::inflate_string(message.substr(start, end))
                                      : message.substr(start, end);
             }
+
+            BASED_LOG("Received AuthState data: %s", payload.c_str());
+
             if (payload == "true") {
                 m_auth_state = m_auth_request_state;
                 m_auth_request_state = "";

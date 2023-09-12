@@ -85,10 +85,21 @@ std::vector<std::string> split_string(std::string input, std::string delimiter);
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
 #if BASED_VERBOSE
+#ifdef __ANDROID__
+#include <android/log.h>
+
+#define BASED_LOG(fmt, ...)                                                               \
+    do {                                                                                  \
+        __android_log_print(ANDROID_LOG_INFO, "BASED_LOG", "BASED_LOG [%s:%d] " fmt "\n", \
+                            __FILENAME__, __LINE__, ##__VA_ARGS__);                       \
+    } while (0)
+#else
 #define BASED_LOG(fmt, ...)                                                               \
     do {                                                                                  \
         std::fprintf(stdout, "[%s:%d] " fmt "\n", __FILENAME__, __LINE__, ##__VA_ARGS__); \
     } while (0)
+
+#endif
 #else
 #define BASED_LOG(fmt, ...)
 #endif
