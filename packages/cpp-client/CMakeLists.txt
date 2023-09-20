@@ -28,7 +28,7 @@ find_library(SSL_LIBRARY NO_CACHE REQUIRED NO_DEFAULT_PATH NAMES ssl HINTS "${LI
 find_library(CRYPTO_LIBRARY NO_CACHE REQUIRED NO_DEFAULT_PATH NAMES crypto HINTS "${LIB_FOLDER}")
 find_library(Z_LIBRARY z REQUIRED)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_VERBOSE_MAKEFILE on)
 
 add_library(based SHARED
@@ -50,6 +50,12 @@ add_compile_definitions(BASED_VERBOSE) # Comment this out to disable logs
 
 target_link_libraries(example PRIVATE based)
 target_include_directories(example PRIVATE include)
+
+if(ANDROID)
+  find_library(log-lib log)
+  target_link_libraries(based PRIVATE ${log-lib})
+  add_compile_definitions(ASIO_DISABLE_STD_ALIGNED_ALLOC)
+endif()
 
 target_link_libraries(based PRIVATE ${Z_LIBRARY})
 target_link_libraries(based PRIVATE ${CURL_LIBRARY})

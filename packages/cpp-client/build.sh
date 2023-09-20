@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 while getopts t: flag
 do
     case "${flag}" in
@@ -15,7 +14,7 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 TARGETS="armeabi-v7a arm64-v8a x86 x86_64"
 NDK_FOLDER=${HOME}/Library/Android/sdk/ndk/25.2.9519653
-ANDROID_API_VERSION=33
+ANDROID_API_VERSION=24
 
 
 for TARGET in ${TARGETS}

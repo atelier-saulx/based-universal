@@ -212,7 +212,9 @@ std::string WsConnection::discover_service(BasedConnectOpt opts, bool http) {
         return url;
     }
     std::string discovery_url = gen_discovery_url(opts);
-    auto [service_url, access_key] = make_request(discovery_url, opts);
+    auto req = make_request(discovery_url, opts);
+    auto service_url = req.first;
+    auto access_key = req.second;
     url = service_url;
     return http ? "https://" + url : "wss://" + url + "/" + access_key;
 }
