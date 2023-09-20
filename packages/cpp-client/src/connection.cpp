@@ -141,6 +141,10 @@ std::pair<std::string, std::string> WsConnection::make_request(std::string url,
         m_reconnect_attempts++;
         return make_request(url, opts);
     }
+    if (!(request_id_header.size() > 0)) {
+        m_reconnect_attempts++;
+        return make_request(url, opts);
+    }
     m_reconnect_attempts = 0;
 
     auto header_value = Utility::split_string(request_id_header, ": ")[1];
