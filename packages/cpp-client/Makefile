@@ -37,7 +37,7 @@ OBJS = basedclient.o \
 	utility.o \
 	based.o
 
-CXXFLAGS += -Wall -std=c++17 -D_WEBSOCKETPP_CPP11_STL_ -DASIO_STANDALONE -DBASED_VERBOSE
+CXXFLAGS += -Wall -std=c++14 -D_WEBSOCKETPP_CPP11_STL_ -DASIO_STANDALONE -DBASED_VERBOSE
 
 all: tls
 
