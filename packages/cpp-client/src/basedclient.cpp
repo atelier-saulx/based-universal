@@ -422,6 +422,11 @@ void BasedClient::on_open() {
     //       either change the checksum in the encoded request (harder probs) or
     //       just encode it on drain queue rather than on .observe,
     //       changing the data structure a bit
+
+    if (m_auth_state.size() > 0) {
+        set_auth_state(m_auth_state, NULL);
+    }
+
     for (auto el : m_active_observables) {
         Observable* obs = el.second;
         auto msg = Utility::encode_observe_message(el.first, obs->name, obs->payload, 0);
