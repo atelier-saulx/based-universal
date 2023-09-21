@@ -41,7 +41,7 @@ do
     -DCMAKE_ANDROID_NDK_DEPRECATED_HEADERS=TRUE \
     -S ../../.. -B .
 
-    cmake --build .
+    cmake --build . || exit 1
     cd -
 done
 
@@ -70,10 +70,7 @@ do
     -DCMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM="36CCRKC437" \
     -S ../../.. -B .
     
-    cmake --build . --config Release
-
-    # make -j32
-
+    cmake --build . --config Release || exit 1
     cd -
 done
 
@@ -90,6 +87,6 @@ if [ ! -z ${USER_TARGETS+x} ];
 fi
 
 mkdir -p ${SCRIPT_DIR}/build/linux
-docker build -t based-build .
-docker run -v "$PWD/build/linux":/build/out based-build
+docker build -t based-build . || exit 1
+docker run -v "$PWD/build/linux":/build/out based-build || exit 1
 cp ${SCRIPT_DIR}/include/based.h ${SCRIPT_DIR}/build/linux/based.h
