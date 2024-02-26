@@ -143,7 +143,7 @@ int BasedClient::observe(std::string name,
         // add cb for this sub
         m_sub_callback[sub_id] = cb;
 
-        // add on_error for this sub if on_error is present (overload?)
+        drain_queues();
     } else {
         // this query has already been requested once, only add subscriber,
         // dont send a new request.
@@ -156,9 +156,12 @@ int BasedClient::observe(std::string name,
 
         // add cb for this new sub
         m_sub_callback[sub_id] = cb;
-    }
 
-    drain_queues();
+        if (m_cache.find(obs_id) != m_cache.end()) {
+            // if cache for this obs exists
+            cb(m_cache.at(obs_id).first.c_str(), m_cache.at(obs_id).second, "", sub_id);
+        }
+    }
 
     return sub_id;
 }
@@ -169,15 +172,19 @@ int BasedClient::get(std::string name,
     auto obs_id = make_obs_id(name, payload);
     auto sub_id = m_sub_id++;
 
-    // if obs_id exists in get_subs, add new sub to list
+    if (m_cache.find(obs_id) != m_cache.end()) {
+        // if cache for this obs exists, fire it immediately
+        cb(m_cache.at(obs_id).first.c_str(), "", sub_id);
+        return sub_id;
+    }
+
     if (m_obs_to_gets.find(obs_id) != m_obs_to_gets.end()) {
         m_obs_to_gets.at(obs_id).insert(sub_id);
-    } else {  // else create it and then add it
+    } else {
         m_obs_to_gets[obs_id] = std::set<sub_id_t>{sub_id};
     }
     m_get_sub_callbacks[sub_id] = cb;
-    // is there an active obs? if so, do nothing (get will trigger on next update)
-    // if there isnt, queue request
+
     if (m_active_observables.find(obs_id) == m_active_observables.end()) {
         checksum_t checksum = 0;
 
