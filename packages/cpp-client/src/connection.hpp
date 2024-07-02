@@ -23,6 +23,7 @@ struct BasedConnectOpt {
     std::string env;
     std::string name = "@based/env-hub";
     std::string key;
+    std::string host;
     bool optional_key;
     std::string url;
     std::string* discovery_urls;
@@ -40,7 +41,8 @@ class WsConnection {
                  std::string env,
                  //  std::string name,
                  std::string key,
-                 bool optional_key);
+                 bool optional_key,
+                 std::string host);
     void connect_to_uri(std::string uri);
     void disconnect();
     void set_open_handler(std::function<void()> on_open);

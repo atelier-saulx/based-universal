@@ -44,7 +44,7 @@ set_target_properties(based PROPERTIES VERSION ${CMAKE_PROJECT_VERSION} SOVERSIO
 add_executable(example example/example.cpp)
 
 add_compile_definitions(ASIO_STANDALONE _WEBSOCKETPP_CPP11_STL_)
-add_compile_definitions(BASED_TLS)
+# add_compile_definitions(BASED_TLS)
 
 add_compile_definitions(BASED_VERBOSE) # Comment this out to disable logs
 

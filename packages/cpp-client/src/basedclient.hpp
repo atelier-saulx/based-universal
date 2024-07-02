@@ -187,7 +187,8 @@ class BasedClient {
                  std::string env,
                  std::string name,
                  std::string key,
-                 bool optional_key);
+                 bool optional_key,
+                 std::string host);
 
     /**
      * @brief Close connection;
