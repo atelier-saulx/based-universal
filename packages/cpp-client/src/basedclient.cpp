@@ -84,10 +84,11 @@ void BasedClient::connect(std::string cluster,
                           std::string name,
                           std::string key,
                           bool optional_key,
-                          std::string host) {
+                          std::string host,
+                          std::string discovery_url) {
     m_con.set_message_handler([&](std::string msg) { on_message(msg); });
     m_con.set_open_handler([&]() { on_open(); });
-    m_con.connect(cluster, org, project, env, key, optional_key, host);
+    m_con.connect(cluster, org, project, env, key, optional_key, host, discovery_url);
 }
 
 void BasedClient::disconnect() {

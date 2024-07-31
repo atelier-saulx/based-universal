@@ -37,8 +37,8 @@ void based_observe_cb(const char* data, uint64_t checksum, const char* error, in
 int main(int argc, char** argv) {
     int client1 = Based__new_client();
 
-    Based__connect(client1, (char*)"local", (char*)"airhub", (char*)"testing", (char*)"production",
-                   (char*)"", (char*)"", false, (char*)"192.168.1.10");
+    Based__connect(client1, (char*)"local", (char*)"saulx", (char*)"test", (char*)"ci", (char*)"",
+                   (char*)"", false, (char*)"", (char*)"http://192.168.1.10:24587");
 
     // Based__connect_to_url(client1, (char*)"ws://localhost:9999");
 

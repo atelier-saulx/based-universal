@@ -67,13 +67,14 @@ extern "C" void Based__connect(based_id client_id,
                                char* name,
                                char* key,
                                bool optional_key,
-                               char* host) {
+                               char* host,
+                               char* discovery_url) {
     if (clients.find(client_id) == clients.end()) {
         std::cerr << "No such id found" << std::endl;
         return;
     }
     auto cl = clients.at(client_id);
-    cl->connect(cluster, org, project, env, name, key, optional_key, host);
+    cl->connect(cluster, org, project, env, name, key, optional_key, host, discovery_url);
 }
 
 extern "C" void Based__disconnect(based_id client_id) {

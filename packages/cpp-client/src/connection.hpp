@@ -26,7 +26,7 @@ struct BasedConnectOpt {
     std::string host;
     bool optional_key;
     std::string url;
-    std::string* discovery_urls;
+    std::string discovery_url;
     std::map<std::string, std::string> headers;
 };
 
@@ -42,7 +42,8 @@ class WsConnection {
                  //  std::string name,
                  std::string key,
                  bool optional_key,
-                 std::string host);
+                 std::string host,
+                 std::string discovery_url);
     void connect_to_uri(std::string uri);
     void disconnect();
     void set_open_handler(std::function<void()> on_open);

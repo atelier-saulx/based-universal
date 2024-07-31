@@ -241,7 +241,7 @@ WsConnection::~WsConnection() {
 
 std::string WsConnection::discover_service(BasedConnectOpt opts, bool http) {
     std::string url;
-    if (opts.url.length() > 0) {
+    if (m_opts.url.length() > 0) {
         url = opts.url;
         if (http && (url.rfind("wss://", 0) == 0)) {
             url.replace(0, 3, "https");
@@ -249,6 +249,9 @@ std::string WsConnection::discover_service(BasedConnectOpt opts, bool http) {
         return url;
     }
     std::string discovery_url = gen_discovery_url(opts);
+    if (!m_opts.discovery_url.empty()) {
+        discovery_url = m_opts.discovery_url;
+    }
     auto req = make_request(discovery_url, opts);
     auto service_url = req.first;
     auto access_key = req.second;
@@ -266,7 +269,8 @@ void WsConnection::connect(std::string cluster,
                            std::string env,
                            std::string key,
                            bool optional_key,
-                           std::string host) {
+                           std::string host,
+                           std::string discovery_url) {
     m_opts.cluster = cluster;
     m_opts.org = org;
     m_opts.project = project;
@@ -275,6 +279,7 @@ void WsConnection::connect(std::string cluster,
     m_opts.key = key;
     m_opts.optional_key = optional_key;
     m_opts.host = host;
+    m_opts.discovery_url = discovery_url;
 
     std::thread con_thr([&]() {
         std::string service_url = discover_service(m_opts, false);
@@ -428,7 +433,7 @@ void WsConnection::set_handlers(ws_client::connection_ptr con) {
 
             if (!m_opts.name.empty()) {
                 connect(m_opts.cluster, m_opts.org, m_opts.project, m_opts.env, m_opts.key,
-                        m_opts.optional_key, m_opts.host);
+                        m_opts.optional_key, m_opts.host, m_opts.discovery_url);
             } else {
                 connect_to_uri(m_uri);
             }
@@ -442,7 +447,7 @@ void WsConnection::set_handlers(ws_client::connection_ptr con) {
 
         if (m_uri.size() == 0) {
             connect(m_opts.cluster, m_opts.org, m_opts.project, m_opts.env, m_opts.key,
-                    m_opts.optional_key, m_opts.host);
+                    m_opts.optional_key, m_opts.host, m_opts.discovery_url);
         } else {
             connect_to_uri(m_uri);
         }

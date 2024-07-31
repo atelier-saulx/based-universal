@@ -188,7 +188,8 @@ class BasedClient {
                  std::string name,
                  std::string key,
                  bool optional_key,
-                 std::string host);
+                 std::string host,
+                 std::string discovery_url);
 
     /**
      * @brief Close connection;
