@@ -6,13 +6,11 @@
 #include <thread>
 #include <websocketpp/client.hpp>
 
-#ifdef BASED_TLS
-#include <websocketpp/config/asio_client.hpp>                                 // SSL
-typedef websocketpp::client<websocketpp::config::asio_tls_client> ws_client;  // SSL
-#else
+#include <websocketpp/config/asio_client.hpp>         // SSL
 #include <websocketpp/config/asio_no_tls_client.hpp>  // No SSL
-typedef websocketpp::client<websocketpp::config::asio_client> ws_client;  // No SSL
-#endif
+
+typedef websocketpp::client<websocketpp::config::asio_tls_client> wss_client;  // SSL
+typedef websocketpp::client<websocketpp::config::asio_client> ws_client;       // No SSL
 
 enum ConnectionStatus { OPEN = 0, CONNECTING, CLOSED, FAILED, TERMINATED_BY_USER };
 
@@ -25,6 +23,7 @@ struct BasedConnectOpt {
     std::string key;
     std::string host;
     bool optional_key;
+    bool enable_tls = true;
     std::string url;
     std::string discovery_url;
     std::map<std::string, std::string> headers;
@@ -43,7 +42,8 @@ class WsConnection {
                  std::string key,
                  bool optional_key,
                  std::string host,
-                 std::string discovery_url);
+                 std::string discovery_url,
+                 bool enable_tls);
     void connect_to_uri(std::string uri);
     void disconnect();
     void set_open_handler(std::function<void()> on_open);
@@ -53,18 +53,15 @@ class WsConnection {
     std::string discover_service(BasedConnectOpt opts, bool http);
 
     void set_handlers(ws_client::connection_ptr con);
-#ifdef BASED_TLS
-#ifdef ASIO_STANDALONE
+    void set_handlers(wss_client::connection_ptr con);
+
     using context_ptr = std::shared_ptr<asio::ssl::context>;
     static context_ptr on_tls_init();
-#else
-    // Use Boost
-    using context_ptr = std::shared_ptr<boost::asio::ssl::context>;
-    static context_ptr on_tls_init();
-#endif
-#endif
+
    private:  // Members
-    ws_client m_endpoint;
+    bool m_enable_tls;
+    ws_client m_ws_endpoint;
+    wss_client m_wss_endpoint;
     websocketpp::connection_hdl m_hdl;
     ConnectionStatus m_status;
     std::string m_uri;

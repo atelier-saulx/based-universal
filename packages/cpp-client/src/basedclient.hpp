@@ -189,7 +189,8 @@ class BasedClient {
                  std::string key,
                  bool optional_key,
                  std::string host,
-                 std::string discovery_url);
+                 std::string discovery_url,
+                 bool enable_tls);
 
     /**
      * @brief Close connection;

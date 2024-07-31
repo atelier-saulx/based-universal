@@ -31,7 +31,8 @@ extern "C" void Based__connect(based_id client_id,
                                char* key,
                                bool optional_key,
                                char* host,
-                               char* discovery_url);
+                               char* discovery_url,
+                               bool enable_tls);
 
 extern "C" void Based__disconnect(based_id client_id);
 extern "C" int Based__observe(based_id client_id,

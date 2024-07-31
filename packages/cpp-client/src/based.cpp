@@ -68,13 +68,15 @@ extern "C" void Based__connect(based_id client_id,
                                char* key,
                                bool optional_key,
                                char* host,
-                               char* discovery_url) {
+                               char* discovery_url,
+                               bool enable_tls) {
     if (clients.find(client_id) == clients.end()) {
         std::cerr << "No such id found" << std::endl;
         return;
     }
     auto cl = clients.at(client_id);
-    cl->connect(cluster, org, project, env, name, key, optional_key, host, discovery_url);
+    cl->connect(cluster, org, project, env, name, key, optional_key, host, discovery_url,
+                enable_tls);
 }
 
 extern "C" void Based__disconnect(based_id client_id) {
