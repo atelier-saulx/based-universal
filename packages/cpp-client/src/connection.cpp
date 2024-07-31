@@ -204,12 +204,13 @@ std::pair<std::string, std::string> WsConnection::make_request(std::string url,
 ///////////////////////// Class methods /////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-WsConnection::WsConnection()
+WsConnection::WsConnection(bool enable_tls)
     : m_status(ConnectionStatus::CLOSED),
       m_on_open(NULL),
       m_on_message(NULL),
-      m_reconnect_attempts(0),
-      m_enable_tls(false) {
+      m_reconnect_attempts(0) {
+    m_enable_tls = enable_tls;
+    BASED_LOG("ENABLE TLS = %d", m_enable_tls);
     if (m_enable_tls) {
         m_wss_endpoint.clear_access_channels(websocketpp::log::alevel::all);
         m_wss_endpoint.clear_error_channels(websocketpp::log::elevel::all);
@@ -255,7 +256,7 @@ std::string WsConnection::discover_service(BasedConnectOpt opts, bool http) {
     auto service_url = req.first;
     auto access_key = req.second;
     url = service_url;
-    if (m_opts.enable_tls) {
+    if (m_enable_tls) {
         return http ? "https://" + url : "wss://" + url + "/" + access_key;
     } else {
         return http ? "http://" + url : "ws://" + url + "/" + access_key;
@@ -269,8 +270,7 @@ void WsConnection::connect(std::string cluster,
                            std::string key,
                            bool optional_key,
                            std::string host,
-                           std::string discovery_url,
-                           bool enable_tls) {
+                           std::string discovery_url) {
     m_opts.cluster = cluster;
     m_opts.org = org;
     m_opts.project = project;
@@ -280,7 +280,6 @@ void WsConnection::connect(std::string cluster,
     m_opts.optional_key = optional_key;
     m_opts.host = host;
     m_opts.discovery_url = discovery_url;
-    m_opts.enable_tls = enable_tls;
 
     std::thread con_thr([&]() {
         std::string service_url = discover_service(m_opts, false);
@@ -446,7 +445,7 @@ void WsConnection::set_handlers(ws_client::connection_ptr con) {
 
             if (!m_opts.name.empty()) {
                 connect(m_opts.cluster, m_opts.org, m_opts.project, m_opts.env, m_opts.key,
-                        m_opts.optional_key, m_opts.host, m_opts.discovery_url, m_enable_tls);
+                        m_opts.optional_key, m_opts.host, m_opts.discovery_url);
             } else {
                 connect_to_uri(m_uri);
             }
@@ -460,7 +459,7 @@ void WsConnection::set_handlers(ws_client::connection_ptr con) {
 
         if (m_uri.size() == 0) {
             connect(m_opts.cluster, m_opts.org, m_opts.project, m_opts.env, m_opts.key,
-                    m_opts.optional_key, m_opts.host, m_opts.discovery_url, m_enable_tls);
+                    m_opts.optional_key, m_opts.host, m_opts.discovery_url);
         } else {
             connect_to_uri(m_uri);
         }
@@ -497,7 +496,7 @@ void WsConnection::set_handlers(wss_client::connection_ptr con) {
 
             if (!m_opts.name.empty()) {
                 connect(m_opts.cluster, m_opts.org, m_opts.project, m_opts.env, m_opts.key,
-                        m_opts.optional_key, m_opts.host, m_opts.discovery_url, m_enable_tls);
+                        m_opts.optional_key, m_opts.host, m_opts.discovery_url);
             } else {
                 connect_to_uri(m_uri);
             }
@@ -511,7 +510,7 @@ void WsConnection::set_handlers(wss_client::connection_ptr con) {
 
         if (m_uri.size() == 0) {
             connect(m_opts.cluster, m_opts.org, m_opts.project, m_opts.env, m_opts.key,
-                    m_opts.optional_key, m_opts.host, m_opts.discovery_url, m_enable_tls);
+                    m_opts.optional_key, m_opts.host, m_opts.discovery_url);
         } else {
             connect_to_uri(m_uri);
         }

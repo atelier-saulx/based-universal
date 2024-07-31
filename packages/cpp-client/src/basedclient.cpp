@@ -20,7 +20,11 @@ enum IncomingType {
     CHANNEL_MESSAGE = 7,
 };
 
-BasedClient::BasedClient() : m_request_id(0), m_sub_id(0), m_auth_in_progress(false){};
+BasedClient::BasedClient(bool enable_tls)
+    : m_request_id(0),
+      m_sub_id(0),
+      m_auth_in_progress(false),
+      m_con(enable_tls){};
 
 /////////////////
 // Helper functions
@@ -85,11 +89,10 @@ void BasedClient::connect(std::string cluster,
                           std::string key,
                           bool optional_key,
                           std::string host,
-                          std::string discovery_url,
-                          bool enable_tls) {
+                          std::string discovery_url) {
     m_con.set_message_handler([&](std::string msg) { on_message(msg); });
     m_con.set_open_handler([&]() { on_open(); });
-    m_con.connect(cluster, org, project, env, key, optional_key, host, discovery_url, enable_tls);
+    m_con.connect(cluster, org, project, env, key, optional_key, host, discovery_url);
 }
 
 void BasedClient::disconnect() {

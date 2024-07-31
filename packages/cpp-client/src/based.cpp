@@ -8,8 +8,8 @@ based_id idx = 0;
 char get_service_buf[1024];
 char auth_state_buf[1048576];
 
-extern "C" based_id Based__new_client() {
-    BasedClient* cl = new BasedClient;
+extern "C" based_id Based__new_client(bool enable_tls) {
+    BasedClient* cl = new BasedClient(enable_tls);
     idx++;
 
     if (clients.find(idx) != clients.end()) {
@@ -68,15 +68,13 @@ extern "C" void Based__connect(based_id client_id,
                                char* key,
                                bool optional_key,
                                char* host,
-                               char* discovery_url,
-                               bool enable_tls) {
+                               char* discovery_url) {
     if (clients.find(client_id) == clients.end()) {
         std::cerr << "No such id found" << std::endl;
         return;
     }
     auto cl = clients.at(client_id);
-    cl->connect(cluster, org, project, env, name, key, optional_key, host, discovery_url,
-                enable_tls);
+    cl->connect(cluster, org, project, env, name, key, optional_key, host, discovery_url);
 }
 
 extern "C" void Based__disconnect(based_id client_id) {

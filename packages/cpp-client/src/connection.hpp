@@ -23,7 +23,6 @@ struct BasedConnectOpt {
     std::string key;
     std::string host;
     bool optional_key;
-    bool enable_tls = true;
     std::string url;
     std::string discovery_url;
     std::map<std::string, std::string> headers;
@@ -32,7 +31,7 @@ struct BasedConnectOpt {
 class WsConnection {
     // eventually there should be some logic here to handle inactivity.
    public:
-    WsConnection();
+    WsConnection(bool enable_tls);
     ~WsConnection();
     void connect(std::string cluster,
                  std::string org,
@@ -42,8 +41,7 @@ class WsConnection {
                  std::string key,
                  bool optional_key,
                  std::string host,
-                 std::string discovery_url,
-                 bool enable_tls);
+                 std::string discovery_url);
     void connect_to_uri(std::string uri);
     void disconnect();
     void set_open_handler(std::function<void()> on_open);
