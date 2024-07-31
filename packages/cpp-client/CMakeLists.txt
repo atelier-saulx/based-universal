@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.13.0)
 
-project(universal-based VERSION 2.1.4)
+project(universal-based VERSION 2.1.5)
 
 if(NOT DEFINED ARCH_FOLDER)
   message(FATAL_ERROR "ARCH_FOLDER is not set, I don't know where to look for libraries")
@@ -44,7 +44,7 @@ set_target_properties(based PROPERTIES VERSION ${CMAKE_PROJECT_VERSION} SOVERSIO
 add_executable(example example/example.cpp)
 
 add_compile_definitions(ASIO_STANDALONE _WEBSOCKETPP_CPP11_STL_)
-add_compile_definitions(BASED_TLS)
+# add_compile_definitions(BASED_TLS)
 
 add_compile_definitions(BASED_VERBOSE) # Comment this out to disable logs
 

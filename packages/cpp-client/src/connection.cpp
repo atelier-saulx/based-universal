@@ -6,6 +6,7 @@
 #include <iostream>
 #include <json.hpp>
 #include <sstream>
+#include <string>
 #include <vector>
 
 #include "utility.hpp"
@@ -70,11 +71,43 @@ std::string gen_cache(BasedConnectOpt opts) {
     return prefix;
 }
 
+unsigned int portFromString(const std::string& str) {
+    unsigned long hash = 5381;
+    int i = str.length();
+    while (i) {
+        hash = (hash * 33) ^ str[--i];
+    }
+    unsigned int n = hash & 0xFFFFFFFF;
+    while (n > 65535) {
+        n = n / 10;
+    }
+    return std::round(n);
+}
+
+unsigned int getServicePort(const std::string& org,
+                            const std::string& project,
+                            const std::string& env,
+                            const std::string& pkgName,
+                            const std::string& machineTemplate = "allServices",
+                            const std::string& index = "0") {
+    std::stringstream ss;
+    ss << machineTemplate << "-" << org << "-" << project << "-" << env << "-" << pkgName << "-"
+       << index;
+    std::string concatenatedString = ss.str();
+
+    unsigned int port = portFromString(concatenatedString);
+    return port;
+}
+
 std::string gen_discovery_url(BasedConnectOpt opts) {
     if (opts.cluster == "local") {
-        // TODO: implement getServicePort to allow this
-        throw std::runtime_error(
-            "Cannot connect to local using discovery_url generation, please use a direct url");
+        // If this were to connect to based-platform services,
+        // we'd need to add logic to route it to '@based/hub-discovery' instead.
+        auto port = getServicePort(opts.org, opts.project, opts.env, "@based/env-hub-discovery",
+                                   "allServices");
+        std::string host = opts.host.empty() ? "localhost" : opts.host;
+        std::string url = "http://" + host + ":" + std::to_string(port);
+        return url;
     }
 
     auto hashed_env = Utility::hash_env(opts.org, opts.project, opts.env, opts.cluster);
@@ -208,7 +241,7 @@ WsConnection::~WsConnection() {
 
 std::string WsConnection::discover_service(BasedConnectOpt opts, bool http) {
     std::string url;
-    if (opts.url.length() > 0) {
+    if (m_opts.url.length() > 0) {
         url = opts.url;
         if (http && (url.rfind("wss://", 0) == 0)) {
             url.replace(0, 3, "https");
@@ -216,11 +249,18 @@ std::string WsConnection::discover_service(BasedConnectOpt opts, bool http) {
         return url;
     }
     std::string discovery_url = gen_discovery_url(opts);
+    if (!m_opts.discovery_url.empty()) {
+        discovery_url = m_opts.discovery_url;
+    }
     auto req = make_request(discovery_url, opts);
     auto service_url = req.first;
     auto access_key = req.second;
     url = service_url;
+#ifdef BASED_TLS
     return http ? "https://" + url : "wss://" + url + "/" + access_key;
+#else
+    return http ? "http://" + url : "ws://" + url + "/" + access_key;
+#endif
 }
 
 void WsConnection::connect(std::string cluster,
@@ -228,7 +268,9 @@ void WsConnection::connect(std::string cluster,
                            std::string project,
                            std::string env,
                            std::string key,
-                           bool optional_key) {
+                           bool optional_key,
+                           std::string host,
+                           std::string discovery_url) {
     m_opts.cluster = cluster;
     m_opts.org = org;
     m_opts.project = project;
@@ -236,6 +278,8 @@ void WsConnection::connect(std::string cluster,
     m_opts.name = "@based/env-hub";
     m_opts.key = key;
     m_opts.optional_key = optional_key;
+    m_opts.host = host;
+    m_opts.discovery_url = discovery_url;
 
     std::thread con_thr([&]() {
         std::string service_url = discover_service(m_opts, false);
@@ -389,7 +433,7 @@ void WsConnection::set_handlers(ws_client::connection_ptr con) {
 
             if (!m_opts.name.empty()) {
                 connect(m_opts.cluster, m_opts.org, m_opts.project, m_opts.env, m_opts.key,
-                        m_opts.optional_key);
+                        m_opts.optional_key, m_opts.host, m_opts.discovery_url);
             } else {
                 connect_to_uri(m_uri);
             }
@@ -403,7 +447,7 @@ void WsConnection::set_handlers(ws_client::connection_ptr con) {
 
         if (m_uri.size() == 0) {
             connect(m_opts.cluster, m_opts.org, m_opts.project, m_opts.env, m_opts.key,
-                    m_opts.optional_key);
+                    m_opts.optional_key, m_opts.host, m_opts.discovery_url);
         } else {
             connect_to_uri(m_uri);
         }
