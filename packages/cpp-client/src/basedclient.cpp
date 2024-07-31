@@ -20,7 +20,11 @@ enum IncomingType {
     CHANNEL_MESSAGE = 7,
 };
 
-BasedClient::BasedClient() : m_request_id(0), m_sub_id(0), m_auth_in_progress(false){};
+BasedClient::BasedClient(bool enable_tls)
+    : m_request_id(0),
+      m_sub_id(0),
+      m_auth_in_progress(false),
+      m_con(enable_tls){};
 
 /////////////////
 // Helper functions

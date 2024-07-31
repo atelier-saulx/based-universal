@@ -204,36 +204,36 @@ std::pair<std::string, std::string> WsConnection::make_request(std::string url,
 ///////////////////////// Class methods /////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-WsConnection::WsConnection()
+WsConnection::WsConnection(bool enable_tls)
     : m_status(ConnectionStatus::CLOSED),
       m_on_open(NULL),
       m_on_message(NULL),
       m_reconnect_attempts(0) {
-    // set the endpoint logging behavior to silent by clearing all of the access and error
-    // logging channels
-    m_endpoint.clear_access_channels(websocketpp::log::alevel::all);
-    m_endpoint.clear_error_channels(websocketpp::log::elevel::all);
-
-    // try {
-    m_endpoint.init_asio();
-    // } catch (const websocketpp::exception& e) {
-    //     std::cout << "CAUGHT ERROR!!!" << e.m_msg << std::endl;
-    // }
-#ifdef BASED_TLS
-    m_endpoint.set_tls_init_handler(websocketpp::lib::bind(&WsConnection::on_tls_init));
-#endif
-
-    // perpetual mode = the endpoint's processing loop will not exit automatically when it has
-    // no connections
-    m_endpoint.start_perpetual();
-    // run perpetually in a thread
-
-    m_thread = std::make_shared<std::thread>(&ws_client::run, &m_endpoint);
+    m_enable_tls = enable_tls;
+    BASED_LOG("ENABLE TLS = %d", m_enable_tls);
+    if (m_enable_tls) {
+        m_wss_endpoint.clear_access_channels(websocketpp::log::alevel::all);
+        m_wss_endpoint.clear_error_channels(websocketpp::log::elevel::all);
+        m_wss_endpoint.init_asio();
+        m_wss_endpoint.set_tls_init_handler(websocketpp::lib::bind(&WsConnection::on_tls_init));
+        m_wss_endpoint.start_perpetual();
+        m_thread = std::make_shared<std::thread>(&wss_client::run, &m_wss_endpoint);
+    } else {
+        m_ws_endpoint.clear_access_channels(websocketpp::log::alevel::all);
+        m_ws_endpoint.clear_error_channels(websocketpp::log::elevel::all);
+        m_ws_endpoint.init_asio();
+        m_ws_endpoint.start_perpetual();
+        m_thread = std::make_shared<std::thread>(&ws_client::run, &m_ws_endpoint);
+    }
 };
 
 WsConnection::~WsConnection() {
     disconnect();
-    m_endpoint.stop_perpetual();
+    if (m_enable_tls) {
+        m_wss_endpoint.stop_perpetual();
+    } else {
+        m_ws_endpoint.stop_perpetual();
+    }
     m_thread->join();
 
     BASED_LOG("Destroyed WsConnection obj");
@@ -256,11 +256,11 @@ std::string WsConnection::discover_service(BasedConnectOpt opts, bool http) {
     auto service_url = req.first;
     auto access_key = req.second;
     url = service_url;
-#ifdef BASED_TLS
-    return http ? "https://" + url : "wss://" + url + "/" + access_key;
-#else
-    return http ? "http://" + url : "ws://" + url + "/" + access_key;
-#endif
+    if (m_enable_tls) {
+        return http ? "https://" + url : "wss://" + url + "/" + access_key;
+    } else {
+        return http ? "http://" + url : "ws://" + url + "/" + access_key;
+    }
 }
 
 void WsConnection::connect(std::string cluster,
@@ -303,27 +303,51 @@ void WsConnection::connect_to_uri(std::string uri) {
 
     m_uri = uri;
     websocketpp::lib::error_code ec;
-    ws_client::connection_ptr con = m_endpoint.get_connection(m_uri, ec);
 
-    if (ec) {
-        BASED_LOG("Error trying to initialize connection, message = \"%s\"", ec.message().c_str());
-        m_status = ConnectionStatus::FAILED;
-        return;
+    if (m_enable_tls) {
+        wss_client::connection_ptr con = m_wss_endpoint.get_connection(m_uri, ec);
+
+        if (ec) {
+            BASED_LOG("Error trying to initialize connection, message = \"%s\"",
+                      ec.message().c_str());
+            m_status = ConnectionStatus::FAILED;
+            return;
+        }
+
+        m_status = ConnectionStatus::CONNECTING;
+
+        // Add special headers
+
+        con->append_header("sec-websocket-protocol", "{}");
+
+        m_hdl = con->get_handle();
+
+        set_handlers(con);
+
+        m_wss_endpoint.connect(con);
+
+    } else {
+        ws_client::connection_ptr con = m_ws_endpoint.get_connection(m_uri, ec);
+
+        if (ec) {
+            BASED_LOG("Error trying to initialize connection, message = \"%s\"",
+                      ec.message().c_str());
+            m_status = ConnectionStatus::FAILED;
+            return;
+        }
+
+        m_status = ConnectionStatus::CONNECTING;
+
+        // Add special headers
+
+        con->append_header("sec-websocket-protocol", "{}");
+
+        m_hdl = con->get_handle();
+
+        set_handlers(con);
+
+        m_ws_endpoint.connect(con);
     }
-
-    m_status = ConnectionStatus::CONNECTING;
-
-    // Add special headers
-
-    con->append_header("sec-websocket-protocol", "{}");
-
-    m_hdl = con->get_handle();
-
-    set_handlers(con);
-
-    m_endpoint.connect(con);
-
-    return;
 };
 
 void WsConnection::set_open_handler(std::function<void()> on_open) {
@@ -343,7 +367,11 @@ void WsConnection::disconnect() {
     m_status = ConnectionStatus::TERMINATED_BY_USER;
 
     websocketpp::lib::error_code ec;
-    m_endpoint.close(m_hdl, websocketpp::close::status::going_away, "", ec);
+    if (m_enable_tls) {
+        m_wss_endpoint.close(m_hdl, websocketpp::close::status::going_away, "", ec);
+    } else {
+        m_ws_endpoint.close(m_hdl, websocketpp::close::status::going_away, "", ec);
+    }
     if (ec) {
         BASED_LOG("Error trying to close connection, message = \"%s\"", ec.message().c_str());
 
@@ -356,7 +384,13 @@ void WsConnection::send(std::vector<uint8_t> message) {
 
     if (m_status != ConnectionStatus::OPEN) throw(std::runtime_error("Connection is not open."));
 
-    m_endpoint.send(m_hdl, message.data(), message.size(), websocketpp::frame::opcode::binary, ec);
+    if (m_enable_tls) {
+        m_wss_endpoint.send(m_hdl, message.data(), message.size(),
+                            websocketpp::frame::opcode::binary, ec);
+    } else {
+        m_ws_endpoint.send(m_hdl, message.data(), message.size(),
+                           websocketpp::frame::opcode::binary, ec);
+    }
     if (ec) {
         BASED_LOG("Error trying to send message, message = \"%s\"", ec.message().c_str());
         return;
@@ -367,10 +401,7 @@ ConnectionStatus WsConnection::status() {
     return m_status;
 };
 
-#ifdef BASED_TLS
-#ifdef ASIO_STANDALONE
 using context_ptr = std::shared_ptr<asio::ssl::context>;
-
 context_ptr WsConnection::on_tls_init() {
     context_ptr ctx = std::make_shared<asio::ssl::context>(asio::ssl::context::sslv23);
 
@@ -383,25 +414,6 @@ context_ptr WsConnection::on_tls_init() {
     }
     return ctx;
 }
-#else
-using context_ptr = std::shared_ptr<boost::asio::ssl::context>;
-
-context_ptr WsConnection::on_tls_init() {
-    context_ptr ctx =
-        std::make_shared<boost::asio::ssl::context>(boost::asio::ssl::context::sslv23);
-
-    try {
-        ctx->set_options(boost::asio::ssl::context::default_workarounds |
-                         boost::asio::ssl::context::no_sslv2 | boost::asio::ssl::context::no_sslv3 |
-                         boost::asio::ssl::context::single_dh_use);
-
-    } catch (std::exception& e) {
-        std::cerr << "Error in context pointer: " << e.what() << std::endl;
-    }
-    return ctx;
-}
-#endif
-#endif
 
 void WsConnection::set_handlers(ws_client::connection_ptr con) {
     // bind must be used if the function we're binding to doest have the right number of
@@ -417,6 +429,57 @@ void WsConnection::set_handlers(ws_client::connection_ptr con) {
     });
 
     con->set_message_handler([this](websocketpp::connection_hdl hdl, ws_client::message_ptr msg) {
+        // here we will pass the message to the decoder, which, based on the header, will
+        // call the appropriate callback
+
+        std::string payload = msg->get_payload();
+        if (m_on_message) {
+            m_on_message(payload);
+        }
+    });
+
+    con->set_close_handler([this](websocketpp::connection_hdl) {
+        if (m_status != ConnectionStatus::TERMINATED_BY_USER) {
+            m_status = ConnectionStatus::CLOSED;
+            m_reconnect_attempts++;
+
+            if (!m_opts.name.empty()) {
+                connect(m_opts.cluster, m_opts.org, m_opts.project, m_opts.env, m_opts.key,
+                        m_opts.optional_key, m_opts.host, m_opts.discovery_url);
+            } else {
+                connect_to_uri(m_uri);
+            }
+        }
+    });
+
+    con->set_fail_handler([this](websocketpp::connection_hdl) {
+        BASED_LOG("Received FAIL event");
+        m_status = ConnectionStatus::FAILED;
+        m_reconnect_attempts++;
+
+        if (m_uri.size() == 0) {
+            connect(m_opts.cluster, m_opts.org, m_opts.project, m_opts.env, m_opts.key,
+                    m_opts.optional_key, m_opts.host, m_opts.discovery_url);
+        } else {
+            connect_to_uri(m_uri);
+        }
+    });
+}
+
+void WsConnection::set_handlers(wss_client::connection_ptr con) {
+    // bind must be used if the function we're binding to doest have the right number of
+    // arguments (hence the placeholders) these handlers must be set before calling connect, and
+    // can't be changed after (i think)
+    con->set_open_handler([this](websocketpp::connection_hdl) {
+        BASED_LOG("Connection opened");
+        m_status = ConnectionStatus::OPEN;
+        m_reconnect_attempts = 0;
+        if (m_on_open) {
+            m_on_open();
+        }
+    });
+
+    con->set_message_handler([this](websocketpp::connection_hdl hdl, wss_client::message_ptr msg) {
         // here we will pass the message to the decoder, which, based on the header, will
         // call the appropriate callback
 

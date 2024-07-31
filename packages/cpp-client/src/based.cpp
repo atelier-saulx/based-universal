@@ -8,8 +8,8 @@ based_id idx = 0;
 char get_service_buf[1024];
 char auth_state_buf[1048576];
 
-extern "C" based_id Based__new_client() {
-    BasedClient* cl = new BasedClient;
+extern "C" based_id Based__new_client(bool enable_tls) {
+    BasedClient* cl = new BasedClient(enable_tls);
     idx++;
 
     if (clients.find(idx) != clients.end()) {

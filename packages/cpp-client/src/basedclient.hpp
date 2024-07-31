@@ -140,7 +140,7 @@ class BasedClient {
     std::map<sub_id_t, void (*)(const char*, const char*, int)> m_get_sub_callbacks;
 
    public:
-    BasedClient();
+    BasedClient(bool enable_tls);
 
     /**
      * @brief Function to retrieve the url of a specific service.

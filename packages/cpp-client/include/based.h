@@ -8,7 +8,7 @@ typedef int32_t based_id;
 // using based_observe_cb = void (*)(char*, uint64_t, char*);
 // using based_cb = void (*)(char*, char*);
 
-extern "C" based_id Based__new_client();
+extern "C" based_id Based__new_client(bool enable_tls);
 extern "C" void Based__delete_client(based_id client_id);
 
 extern "C" char* Based__get_service(based_id client_id,
