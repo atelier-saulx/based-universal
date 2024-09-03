@@ -178,12 +178,6 @@ int BasedClient::get(std::string name,
     auto obs_id = make_obs_id(name, payload);
     auto sub_id = m_sub_id++;
 
-    if (m_cache.find(obs_id) != m_cache.end()) {
-        // if cache for this obs exists, fire it immediately
-        cb(m_cache.at(obs_id).first.c_str(), "", sub_id);
-        return sub_id;
-    }
-
     if (m_obs_to_gets.find(obs_id) != m_obs_to_gets.end()) {
         m_obs_to_gets.at(obs_id).insert(sub_id);
     } else {
