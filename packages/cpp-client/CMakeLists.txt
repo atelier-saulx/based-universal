@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.13.0)
 
-project(universal-based VERSION 2.1.5)
+project(universal-based VERSION 2.1.6)
 
 if(NOT DEFINED ARCH_FOLDER)
   message(FATAL_ERROR "ARCH_FOLDER is not set, I don't know where to look for libraries")
@@ -23,9 +23,11 @@ include_directories(include)
 
 set(LIB_FOLDER "${CMAKE_CURRENT_LIST_DIR}/prebuilt-libs/lib/${ARCH_FOLDER}")
 
-find_library(CURL_LIBRARY NO_CACHE REQUIRED NO_DEFAULT_PATH NAMES curl HINTS "${LIB_FOLDER}")
-find_library(SSL_LIBRARY NO_CACHE REQUIRED NO_DEFAULT_PATH NAMES ssl HINTS "${LIB_FOLDER}")
-find_library(CRYPTO_LIBRARY NO_CACHE REQUIRED NO_DEFAULT_PATH NAMES crypto HINTS "${LIB_FOLDER}")
+message(NOTICE "${CMAKE_CURRENT_LIST_DIR}/prebuilt-libs/lib/${ARCH_FOLDER}")
+
+find_library(CURL_LIBRARY NO_CACHE REQUIRED NO_DEFAULT_PATH NAMES libcurl.a HINTS "${LIB_FOLDER}")
+find_library(SSL_LIBRARY NO_CACHE REQUIRED NO_DEFAULT_PATH NAMES libssl.a HINTS "${LIB_FOLDER}")
+find_library(CRYPTO_LIBRARY NO_CACHE REQUIRED NO_DEFAULT_PATH NAMES libcrypto.a HINTS "${LIB_FOLDER}")
 find_library(Z_LIBRARY z REQUIRED)
 
 set(CMAKE_CXX_STANDARD 14)
