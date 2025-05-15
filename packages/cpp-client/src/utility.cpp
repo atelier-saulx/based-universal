@@ -331,12 +331,17 @@ int32_t Utility::read_header(std::string buff) {
     return res;
 }
 
-int64_t Utility::read_bytes_from_string(std::string& buff, int start, int len) {
-    char const* data = buff.data();
-    int32_t res = 0;
-    size_t s = len - 1 + start;  // len - 1 + start;
-    for (int i = s; i >= start; i--) {
-        res = res * 256 + (uint8_t)data[i];
+uint64_t Utility::read_bytes_from_string(std::string& buff, int start, int len) {
+    if (start < 0 || len < 0 || start + len > static_cast<int>(buff.size())) {
+        throw std::out_of_range("read_bytes_from_string: Out of bounds access");
     }
+
+    char const* data = buff.data();
+    uint64_t res = 0;
+
+    for (int i = 0; i < len; i++) {
+        res |= (static_cast<uint64_t>((uint8_t)data[start + i])) << (8 * i);
+    }
+
     return res;
 }
